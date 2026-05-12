@@ -63,9 +63,21 @@ function Recenter({ center }: { center: Coords }) {
 
 export default function MapClient({ center, activities }: MapClientProps) {
   const liveCenter = useGeolocatedCenter(center);
+  // Dedupe by id so a duplicate row never produces two stacked markers at the
+  // same coordinates (which would otherwise be indistinguishable on the map).
+  const uniqueActivities = useMemo(() => {
+    const seen = new Set<string>();
+    const out: ActivityWithCount[] = [];
+    for (const a of activities) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      out.push(a);
+    }
+    return out;
+  }, [activities]);
   const markers = useMemo(
     () =>
-      activities.map((a) => (
+      uniqueActivities.map((a) => (
         <Marker
           key={a.id}
           position={[a.lat, a.lng]}
@@ -99,7 +111,7 @@ export default function MapClient({ center, activities }: MapClientProps) {
           </Popup>
         </Marker>
       )),
-    [activities],
+    [uniqueActivities],
   );
 
   return (

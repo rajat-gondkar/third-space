@@ -35,9 +35,24 @@ export function ActivityList({
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const { isPinned, togglePin } = usePinnedActivities();
 
+  // Dedupe by activity id — guards against duplicate rows from any source
+  // (race-y double inserts, stale Realtime payloads, etc.). React would warn
+  // on duplicate keys but would still render both; we want strictly one card
+  // per activity id at all times.
+  const uniqueActivities = useMemo(() => {
+    const seen = new Set<string>();
+    const out: ActivityWithCount[] = [];
+    for (const a of activities) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      out.push(a);
+    }
+    return out;
+  }, [activities]);
+
   const filtered = useMemo(() => {
     const q = filters.location.trim().toLowerCase();
-    return activities.filter((a) => {
+    return uniqueActivities.filter((a) => {
       if (q) {
         const hay = `${a.location_name ?? ""} ${a.title}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -50,11 +65,11 @@ export function ActivityList({
       }
       return true;
     });
-  }, [activities, filters]);
+  }, [uniqueActivities, filters]);
 
   const pinnedActivities = useMemo(
-    () => activities.filter((a) => isPinned(a.id)),
-    [activities, isPinned],
+    () => uniqueActivities.filter((a) => isPinned(a.id)),
+    [uniqueActivities, isPinned],
   );
   const pinnedIds = new Set(pinnedActivities.map((a) => a.id));
   const remaining = filtered.filter((a) => !pinnedIds.has(a.id));
@@ -112,14 +127,14 @@ export function ActivityList({
           <div className="animate-fade-up rounded-2xl border border-dashed border-border bg-gradient-to-br from-primary/5 via-transparent to-fuchsia-500/5 p-6 text-center">
             <Sparkles className="mx-auto size-8 text-primary/60" />
             <p className="mt-2 font-medium">
-              {activities.length === 0
+              {uniqueActivities.length === 0
                 ? "No activities nearby"
                 : filterActive
                   ? "Nothing matches your filters"
                   : "Quiet right now"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {activities.length === 0
+              {uniqueActivities.length === 0
                 ? "Be the first to post one."
                 : filterActive
                   ? "Try clearing them, or post something new."

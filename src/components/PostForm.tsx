@@ -59,6 +59,9 @@ export function PostForm({ userId }: { userId: string }) {
   );
   const [submitting, setSubmitting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
+  // Synchronous re-entry guard — protects against double-click races where the
+  // button hasn't re-rendered as `disabled` yet between the two clicks.
+  const submitLockRef = useRef(false);
 
   // Geocoding state
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
@@ -176,10 +179,12 @@ export function PostForm({ userId }: { userId: string }) {
   }, [showSuggestions]);
 
   async function onSubmit(values: FormValues) {
+    if (submitLockRef.current) return;
     if (!coords) {
       toast.error("Drop a pin on the map or pick a location from suggestions");
       return;
     }
+    submitLockRef.current = true;
     setSubmitting(true);
     const supabase = createClient();
 
@@ -201,16 +206,20 @@ export function PostForm({ userId }: { userId: string }) {
 
     if (error || !data) {
       toast.error(error?.message ?? "Could not create activity");
+      submitLockRef.current = false;
       setSubmitting(false);
       return;
     }
 
-    await supabase
-      .from("participants")
-      .insert({ activity_id: data.id, user_id: userId });
+    // Host is auto-added as a participant by the `add_host_as_participant`
+    // DB trigger (see supabase/migrations/0001_init.sql). No client insert
+    // needed — keeps the call path single-shot and avoids a duplicate-PK race.
 
     setPostedId(data.id);
     setSubmitting(false);
+    // Intentionally leave submitLockRef = true: the SuccessModal routes the
+    // user away, so further submissions are not expected. The component
+    // unmounts and the ref is GC'd on navigation.
   }
 
   function viewPostedActivity() {
