@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
 
+import { DeleteActivityButton } from "@/components/DeleteActivityButton";
 import { JoinButton } from "@/components/JoinButton";
 import { NavBar } from "@/components/NavBar";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
@@ -55,6 +56,7 @@ export default async function ActivityDetail({ params }: Props) {
   const total = participantCount ?? 0;
   const isFull = total >= activity.max_participants;
   const hasJoined = !!myRow;
+  const isHost = activity.host_id === user.id;
   const startsAt = new Date(activity.start_time);
   // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
   const isPast = startsAt.getTime() < Date.now();
@@ -134,6 +136,15 @@ export default async function ActivityDetail({ params }: Props) {
           hasJoined={hasJoined}
           isPast={isPast}
         />
+
+        {isHost && (
+          <div className="flex justify-center">
+            <DeleteActivityButton
+              activityId={activity.id}
+              activityTitle={activity.title}
+            />
+          </div>
+        )}
 
         <p className="text-center text-xs text-muted-foreground">
           Pin: {activity.lat.toFixed(4)}, {activity.lng.toFixed(4)}
