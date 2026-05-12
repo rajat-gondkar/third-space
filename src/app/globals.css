@@ -4,49 +4,73 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------- Light theme: warm off-white + vibrant indigo/violet ---------- */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
+  --radius: 0.75rem;
+
+  --background: oklch(0.99 0.006 280);
+  --foreground: oklch(0.18 0.03 280);
+
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
+  --card-foreground: oklch(0.18 0.03 280);
+
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
+  --popover-foreground: oklch(0.18 0.03 280);
+
+  --primary: oklch(0.55 0.21 268);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.96 0.02 280);
+  --secondary-foreground: oklch(0.25 0.06 280);
+
+  --muted: oklch(0.96 0.013 280);
+  --muted-foreground: oklch(0.5 0.03 280);
+
+  --accent: oklch(0.94 0.045 30);
+  --accent-foreground: oklch(0.4 0.13 30);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.92 0.018 280);
+  --input: oklch(0.92 0.018 280);
+  --ring: oklch(0.55 0.21 268);
+
+  /* Brand gradient stops, reused in inline gradients */
+  --brand-from: oklch(0.6 0.21 263);
+  --brand-via: oklch(0.62 0.22 305);
+  --brand-to: oklch(0.7 0.2 350);
 }
 
+/* ---------- Dark theme: deep indigo dusk ---------- */
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
+  --background: oklch(0.17 0.03 280);
+  --foreground: oklch(0.98 0 0);
+
+  --card: oklch(0.22 0.035 280);
+  --card-foreground: oklch(0.98 0 0);
+
+  --popover: oklch(0.22 0.035 280);
+  --popover-foreground: oklch(0.98 0 0);
+
+  --primary: oklch(0.72 0.18 268);
+  --primary-foreground: oklch(0.16 0.03 280);
+
+  --secondary: oklch(0.27 0.04 280);
+  --secondary-foreground: oklch(0.98 0 0);
+
+  --muted: oklch(0.27 0.04 280);
+  --muted-foreground: oklch(0.72 0.025 280);
+
+  --accent: oklch(0.35 0.07 30);
+  --accent-foreground: oklch(0.98 0 0);
+
+  --destructive: oklch(0.7 0.2 22);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.3 0.04 280);
+  --input: oklch(0.3 0.05 280);
+  --ring: oklch(0.72 0.18 268);
 }
 
 @theme inline {
@@ -73,7 +97,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -88,9 +112,57 @@
   }
 }
 
-/* Leaflet container needs an explicit height to render. */
+/* ---------- Custom animations ---------- */
+@keyframes ts-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ts-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ts-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-up {
+  animation: ts-fade-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.animate-pop-in {
+  animation: ts-pop-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* Leaflet container needs explicit height. */
 .leaflet-container {
   height: 100%;
   width: 100%;
   z-index: 0;
+}
+
+/* Slightly polish the default Leaflet popup to match the rest of the app. */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
 }
