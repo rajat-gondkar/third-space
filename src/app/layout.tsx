@@ -16,10 +16,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Third Space — discover what’s happening near you",
   description:
     "Post and join real-life activities happening around you, right now.",
+  openGraph: {
+    type: "website",
+    siteName: "Third Space",
+    title: "Third Space — discover what’s happening near you",
+    description:
+      "Post and join real-life activities happening around you, right now.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Third Space — discover what’s happening near you",
+    description:
+      "Post and join real-life activities happening around you, right now.",
+  },
 };
 
 export const viewport: Viewport = {
