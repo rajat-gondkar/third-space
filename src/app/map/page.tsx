@@ -54,19 +54,19 @@ export default async function MapPage() {
   };
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col md:h-dvh">
       <NavBar user={navUser} liveCount={activities.length} />
       <RealtimeRefresh
         channelName="map"
         tables={["activities", "participants"]}
       />
 
-      <div className="grid flex-1 grid-rows-[55%_45%] overflow-hidden md:grid-cols-[1fr_440px] md:grid-rows-1">
-        <div className="relative h-full w-full overflow-hidden">
+      <div className="flex flex-1 flex-col md:grid md:grid-cols-[1fr_440px] md:overflow-hidden">
+        <div className="relative h-[55vh] w-full shrink-0 md:h-full md:overflow-hidden">
           <Map center={DEFAULT_CENTER} activities={activities} />
         </div>
 
-        <aside className="flex min-h-0 flex-col overflow-hidden border-t border-border bg-background p-4 md:border-l md:border-t-0">
+        <aside className="flex flex-col border-t border-border bg-background p-4 pb-[30px] md:min-h-0 md:overflow-hidden md:border-l md:border-t-0 md:pb-4">
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">
