@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Share2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -15,6 +16,11 @@ type Props = {
 };
 
 type Platform = "whatsapp" | "reddit" | "x";
+
+const MENU_WIDTH = 176;
+const MENU_HEIGHT = 132; // approx — 3 items at 32px + padding
+const MENU_GAP = 6;
+const VIEWPORT_INSET = 8;
 
 const PLATFORMS: {
   key: Platform;
@@ -63,7 +69,12 @@ const PLATFORMS: {
   },
 ];
 
-function shareUrlFor(platform: Platform, absUrl: string, title: string, text: string) {
+function shareUrlFor(
+  platform: Platform,
+  absUrl: string,
+  title: string,
+  text: string,
+) {
   const encUrl = encodeURIComponent(absUrl);
   const encTitle = encodeURIComponent(title);
   const encText = encodeURIComponent(text);
@@ -77,24 +88,67 @@ function shareUrlFor(platform: Platform, absUrl: string, title: string, text: st
   }
 }
 
+function computeMenuPosition(rect: DOMRect): { top: number; left: number } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Right-align to trigger by default
+  let left = rect.right - MENU_WIDTH;
+  left = Math.max(VIEWPORT_INSET, Math.min(left, vw - MENU_WIDTH - VIEWPORT_INSET));
+
+  // Below trigger by default; flip up if it would overflow viewport bottom
+  let top = rect.bottom + MENU_GAP;
+  if (top + MENU_HEIGHT > vh - VIEWPORT_INSET) {
+    top = Math.max(VIEWPORT_INSET, rect.top - MENU_HEIGHT - MENU_GAP);
+  }
+
+  return { top, left };
+}
+
 export function ShareButton({ path, title, text }: Props) {
   const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  // Hydration-safe portal mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Capture trigger position whenever the menu opens
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPos(computeMenuPosition(rect));
+  }, [open]);
+
+  // Close on outside click (check both trigger and portal-rendered menu),
+  // and on ESC / scroll / resize.
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
+    function onScrollOrResize() {
+      setOpen(false);
+    }
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
     return () => {
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
     };
   }, [open]);
 
@@ -117,9 +171,38 @@ export function ShareButton({ path, title, text }: Props) {
     setOpen(false);
   }
 
+  const menu = open && pos && (
+    <div
+      ref={menuRef}
+      role="menu"
+      style={{
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        width: MENU_WIDTH,
+        zIndex: 100,
+      }}
+      className="animate-pop-in rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-2xl"
+    >
+      {PLATFORMS.map((p) => (
+        <button
+          key={p.key}
+          type="button"
+          role="menuitem"
+          onClick={(e) => handleShare(e, p.key)}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <span className={p.color}>{p.icon}</span>
+          <span>{p.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <div ref={wrapperRef} className="relative">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={handleToggle}
         aria-label="Share activity"
@@ -134,26 +217,7 @@ export function ShareButton({ path, title, text }: Props) {
       >
         <Share2 className="size-4" />
       </button>
-
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-9 z-20 min-w-[160px] animate-pop-in rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
-        >
-          {PLATFORMS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              role="menuitem"
-              onClick={(e) => handleShare(e, p.key)}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <span className={p.color}>{p.icon}</span>
-              <span>{p.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {mounted && menu ? createPortal(menu, document.body) : null}
+    </>
   );
 }

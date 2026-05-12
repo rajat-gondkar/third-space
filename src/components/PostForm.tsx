@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BlockingLoader } from "@/components/BlockingLoader";
 import { LocationPicker } from "@/components/LocationPicker";
 import { SuccessModal } from "@/components/SuccessModal";
 import { ACTIVITY_CATEGORIES, CATEGORY_LABEL } from "@/lib/types";
@@ -59,6 +60,9 @@ export function PostForm({ userId }: { userId: string }) {
   );
   const [submitting, setSubmitting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
+  // When set, a full-screen loader is shown over the form / modal.
+  // Used for both the DB-write phase and the post-modal navigation phase.
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   // Synchronous re-entry guard — protects against double-click races where the
   // button hasn't re-rendered as `disabled` yet between the two clicks.
   const submitLockRef = useRef(false);
@@ -186,6 +190,7 @@ export function PostForm({ userId }: { userId: string }) {
     }
     submitLockRef.current = true;
     setSubmitting(true);
+    setLoadingMessage("Sit tight — we're creating your space!");
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -208,6 +213,7 @@ export function PostForm({ userId }: { userId: string }) {
       toast.error(error?.message ?? "Could not create activity");
       submitLockRef.current = false;
       setSubmitting(false);
+      setLoadingMessage(null);
       return;
     }
 
@@ -215,6 +221,7 @@ export function PostForm({ userId }: { userId: string }) {
     // DB trigger (see supabase/migrations/0001_init.sql). No client insert
     // needed — keeps the call path single-shot and avoids a duplicate-PK race.
 
+    setLoadingMessage(null);
     setPostedId(data.id);
     setSubmitting(false);
     // Intentionally leave submitLockRef = true: the SuccessModal routes the
@@ -224,7 +231,10 @@ export function PostForm({ userId }: { userId: string }) {
 
   function viewPostedActivity() {
     if (!postedId) return;
-    router.push(`/activity/${postedId}`);
+    const id = postedId;
+    setPostedId(null);
+    setLoadingMessage("Opening your activity…");
+    router.push(`/activity/${id}`);
     router.refresh();
   }
 
@@ -380,6 +390,13 @@ export function PostForm({ userId }: { userId: string }) {
       </div>
 
       <SuccessModal open={!!postedId} onAction={viewPostedActivity} />
+      <BlockingLoader
+        open={!!loadingMessage}
+        message={loadingMessage ?? ""}
+        subMessage={
+          submitting ? "Pinning it to the map…" : "Almost there."
+        }
+      />
     </form>
   );
 }
