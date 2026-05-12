@@ -11,16 +11,17 @@ type Props = {
   tables: Table[];
   channelName: string;
   // Safety-net polling interval (ms). Set to 0 to disable.
-  // Defaults to 15s — paired with the push-based Realtime channel above, this
+  // Defaults to 30s — paired with the push-based Realtime channel above, this
   // catches any updates that slip past a dropped WebSocket (cellular hand-off,
-  // backgrounded tabs, paused projects, etc.).
+  // backgrounded tabs, paused projects, etc.). 30s keeps the perceived latency
+  // low while avoiding the visible jank of a full server re-render every 15s.
   pollMs?: number;
 };
 
 export function RealtimeRefresh({
   tables,
   channelName,
-  pollMs = 15_000,
+  pollMs = 30_000,
 }: Props) {
   const router = useRouter();
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

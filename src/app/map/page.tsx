@@ -7,7 +7,7 @@ import { Map } from "@/components/Map";
 import { NavBar } from "@/components/NavBar";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import type {
   Activity,
   ActivityCategory,
@@ -21,11 +21,10 @@ type RawRow = Activity & {
 };
 
 export default async function MapPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login?next=/map");
+
+  const supabase = await createClient();
 
   // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
   const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
@@ -44,13 +43,9 @@ export default async function MapPage() {
   }));
 
   const navUser = {
-    email: user.email ?? "",
-    name:
-      (user.user_metadata?.full_name as string | undefined) ??
-      (user.user_metadata?.name as string | undefined) ??
-      null,
-    avatarUrl:
-      (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
   };
 
   return (
