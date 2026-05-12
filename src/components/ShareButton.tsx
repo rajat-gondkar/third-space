@@ -13,6 +13,12 @@ type Props = {
   title: string;
   // Optional richer share text (used for WhatsApp + X). Falls back to title.
   text?: string;
+  // Activity coordinates — used to build a Google Maps directions link
+  // appended to the WhatsApp share message so the recipient can navigate.
+  coords?: { lat: number; lng: number };
+  // Optional human-readable place name (e.g. "Cubbon Park") used as a label
+  // before the directions link in WhatsApp.
+  locationName?: string | null;
 };
 
 type Platform = "whatsapp" | "reddit" | "x";
@@ -56,7 +62,7 @@ const PLATFORMS: {
   },
   {
     key: "x",
-    label: "X",
+    label: "Twitter",
     color: "text-foreground",
     icon: (
       <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
@@ -69,18 +75,35 @@ const PLATFORMS: {
   },
 ];
 
+function directionsUrl(coords: { lat: number; lng: number }) {
+  // Universal Google Maps directions deep link. Opens the Google Maps app on
+  // mobile (iOS/Android) and the web client on desktop, with the destination
+  // pre-filled and the origin asked from the user.
+  return `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`;
+}
+
 function shareUrlFor(
   platform: Platform,
   absUrl: string,
   title: string,
   text: string,
+  coords?: { lat: number; lng: number },
+  locationName?: string | null,
 ) {
   const encUrl = encodeURIComponent(absUrl);
   const encTitle = encodeURIComponent(title);
   const encText = encodeURIComponent(text);
+  const maps = coords ? directionsUrl(coords) : null;
   switch (platform) {
-    case "whatsapp":
-      return `https://wa.me/?text=${encodeURIComponent(`${text}\n${absUrl}`)}`;
+    case "whatsapp": {
+      // Activity URL is first so WhatsApp uses its OG card for the preview.
+      // The directions link sits below, easy to tap from the chat thread.
+      const parts = [text, absUrl];
+      if (maps) {
+        parts.push(`📍 Directions${locationName ? ` to ${locationName}` : ""}: ${maps}`);
+      }
+      return `https://wa.me/?text=${encodeURIComponent(parts.join("\n\n"))}`;
+    }
     case "reddit":
       return `https://www.reddit.com/submit?url=${encUrl}&title=${encTitle}`;
     case "x":
@@ -94,7 +117,10 @@ function computeMenuPosition(rect: DOMRect): { top: number; left: number } {
 
   // Right-align to trigger by default
   let left = rect.right - MENU_WIDTH;
-  left = Math.max(VIEWPORT_INSET, Math.min(left, vw - MENU_WIDTH - VIEWPORT_INSET));
+  left = Math.max(
+    VIEWPORT_INSET,
+    Math.min(left, vw - MENU_WIDTH - VIEWPORT_INSET),
+  );
 
   // Below trigger by default; flip up if it would overflow viewport bottom
   let top = rect.bottom + MENU_GAP;
@@ -105,7 +131,7 @@ function computeMenuPosition(rect: DOMRect): { top: number; left: number } {
   return { top, left };
 }
 
-export function ShareButton({ path, title, text }: Props) {
+export function ShareButton({ path, title, text, coords, locationName }: Props) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -162,11 +188,9 @@ export function ShareButton({ path, title, text }: Props) {
     e.preventDefault();
     e.stopPropagation();
     const absUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}${path}`
-        : path;
+      typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
     const msg = text ?? title;
-    const url = shareUrlFor(platform, absUrl, title, msg);
+    const url = shareUrlFor(platform, absUrl, title, msg, coords, locationName);
     window.open(url, "_blank", "noopener,noreferrer");
     setOpen(false);
   }

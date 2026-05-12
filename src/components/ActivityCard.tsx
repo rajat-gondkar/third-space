@@ -73,6 +73,8 @@ export function ActivityCard({
           path={`/activity/${activity.id}`}
           title={activity.title}
           text={`Join "${activity.title}"${activity.location_name ? ` at ${activity.location_name}` : ""} on Third Space`}
+          coords={{ lat: activity.lat, lng: activity.lng }}
+          locationName={activity.location_name}
         />
         {onTogglePin && (
           <PinButton pinned={pinned} onToggle={onTogglePin} />
