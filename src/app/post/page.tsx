@@ -2,16 +2,23 @@ import { redirect } from "next/navigation";
 
 import { NavBar } from "@/components/NavBar";
 import { PostForm } from "@/components/PostForm";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function PostPage() {
-  const user = await getCurrentUser();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/post");
 
   const navUser = {
-    email: user.email,
-    name: user.name,
-    avatarUrl: user.avatarUrl,
+    email: user.email ?? "",
+    name:
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      null,
+    avatarUrl:
+      (user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
 
   return (
