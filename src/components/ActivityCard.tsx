@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
 import { PinButton } from "@/components/PinButton";
+import { ShareButton } from "@/components/ShareButton";
 import { cn } from "@/lib/utils";
 import {
   CATEGORY_EMOJI,
@@ -43,7 +44,7 @@ export function ActivityCard({
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-100 to-fuchsia-100 text-xl ring-1 ring-inset ring-white/40 dark:from-indigo-950/60 dark:to-fuchsia-950/60 dark:ring-white/5">
           {CATEGORY_EMOJI[activity.category]}
         </div>
-        <div className="min-w-0 flex-1 pr-9">
+        <div className="min-w-0 flex-1 pr-[4.75rem]">
           <div className="flex items-baseline gap-2">
             <h3 className="truncate font-medium leading-tight">
               {activity.title}
@@ -67,11 +68,16 @@ export function ActivityCard({
         </div>
       </Link>
 
-      {onTogglePin && (
-        <div className="absolute right-2 top-2">
+      <div className="absolute right-2 top-2 flex items-center gap-1.5">
+        <ShareButton
+          path={`/activity/${activity.id}`}
+          title={activity.title}
+          text={`Join "${activity.title}"${activity.location_name ? ` at ${activity.location_name}` : ""} on Third Space`}
+        />
+        {onTogglePin && (
           <PinButton pinned={pinned} onToggle={onTogglePin} />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
