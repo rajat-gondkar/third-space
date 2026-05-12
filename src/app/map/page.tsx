@@ -2,16 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
-import { ActivityCard } from "@/components/ActivityCard";
+import { ActivityList } from "@/components/ActivityList";
 import { Map } from "@/components/Map";
+import { NavBar } from "@/components/NavBar";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
-import { SignOutButton } from "@/components/SignOutButton";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Activity,
-  ActivityWithCount,
   ActivityCategory,
+  ActivityWithCount,
 } from "@/lib/types";
 
 const DEFAULT_CENTER = { lat: 12.9716, lng: 77.5946 }; // Bangalore
@@ -43,68 +43,54 @@ export default async function MapPage() {
     participant_count: row.participants?.[0]?.count ?? 0,
   }));
 
+  const navUser = {
+    email: user.email ?? "",
+    name:
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      null,
+    avatarUrl:
+      (user.user_metadata?.avatar_url as string | undefined) ?? null,
+  };
+
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <Link href="/map" className="font-semibold tracking-tight">
-          Third Space
-        </Link>
-        <div className="flex items-center gap-1">
-          <Button asChild size="sm">
-            <Link href="/post">
-              <Plus />
-              Post
-            </Link>
-          </Button>
-          <SignOutButton />
-        </div>
-      </header>
-
+      <NavBar user={navUser} liveCount={activities.length} />
       <RealtimeRefresh
         channelName="map"
         tables={["activities", "participants"]}
       />
 
-      <div className="grid flex-1 grid-rows-[55%_45%] overflow-hidden md:grid-cols-[1fr_380px] md:grid-rows-1">
+      <div className="grid flex-1 grid-rows-[55%_45%] overflow-hidden md:grid-cols-[1fr_440px] md:grid-rows-1">
         <div className="relative h-full w-full overflow-hidden">
           <Map center={DEFAULT_CENTER} activities={activities} />
         </div>
 
-        <aside className="flex flex-col gap-3 overflow-y-auto border-t border-border bg-background p-4 md:border-l md:border-t-0">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold">Happening now</h2>
-            <span className="text-xs text-muted-foreground">
-              {activities.length}{" "}
-              {activities.length === 1 ? "activity" : "activities"}
-            </span>
+        <aside className="flex min-h-0 flex-col overflow-hidden border-t border-border bg-background p-4 md:border-l md:border-t-0">
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Happening now
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Pin up to 2 · filter by today, date, or area
+              </p>
+            </div>
+            <Button asChild size="sm" className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md ring-1 ring-white/20 transition-transform hover:scale-[1.03] hover:opacity-95">
+              <Link href="/post">
+                <Plus />
+                Post
+              </Link>
+            </Button>
           </div>
 
           {error && (
-            <p className="text-sm text-destructive">
-              Couldn’t load activities: {error.message}
+            <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Couldn&rsquo;t load activities: {error.message}
             </p>
           )}
 
-          {!error && activities.length === 0 && (
-            <div className="rounded-lg border border-dashed border-border p-6 text-center">
-              <p className="font-medium">No activities nearby</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Be the first to post one.
-              </p>
-              <Button asChild size="sm" className="mt-3">
-                <Link href="/post">
-                  <Plus />
-                  Post an activity
-                </Link>
-              </Button>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {activities.map((a) => (
-              <ActivityCard key={a.id} activity={a} />
-            ))}
-          </div>
+          <ActivityList activities={activities} />
         </aside>
       </div>
     </div>

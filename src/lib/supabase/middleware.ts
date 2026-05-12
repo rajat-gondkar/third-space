@@ -44,7 +44,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirect);
   }
 
-  if (user && (path === "/" || path === "/login")) {
+  if (user && path === "/login") {
     const redirect = request.nextUrl.clone();
     redirect.pathname = "/map";
     redirect.search = "";

@@ -42,14 +42,16 @@ function categoryIcon(category: ActivityWithCount["category"]) {
     className: "ts-pin",
     html: `<div style="
       display:flex;align-items:center;justify-content:center;
-      width:38px;height:38px;border-radius:9999px;
-      background:white;box-shadow:0 4px 12px rgba(0,0,0,0.18);
-      border:2px solid white;font-size:20px;line-height:1;
-      transform: translate(-19px,-38px);
+      width:40px;height:40px;border-radius:9999px;
+      background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+      box-shadow: 0 6px 18px rgba(99,102,241,0.28), 0 2px 4px rgba(0,0,0,0.08);
+      border: 2px solid rgba(167,139,250,0.6);
+      font-size:20px;line-height:1;
+      transform: translate(-20px,-40px);
     ">${emoji}</div>`,
-    iconSize: [38, 38],
-    iconAnchor: [19, 38],
-    popupAnchor: [0, -36],
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -38],
   });
 }
 

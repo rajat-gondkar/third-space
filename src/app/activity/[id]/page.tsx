@@ -4,6 +4,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
 
 import { JoinButton } from "@/components/JoinButton";
+import { NavBar } from "@/components/NavBar";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -58,29 +59,38 @@ export default async function ActivityDetail({ params }: Props) {
   // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
   const isPast = startsAt.getTime() < Date.now();
 
+  const navUser = {
+    email: user.email ?? "",
+    name:
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      null,
+    avatarUrl:
+      (user.user_metadata?.avatar_url as string | undefined) ?? null,
+  };
+
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <Button asChild variant="ghost" size="icon" aria-label="Back">
-          <Link href="/map">
-            <ArrowLeft />
-          </Link>
-        </Button>
-        <h1 className="font-semibold leading-tight">Activity</h1>
-      </header>
-
+      <NavBar user={navUser} />
       <RealtimeRefresh
         channelName={`activity-${id}`}
         tables={["participants", "activities"]}
       />
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm uppercase tracking-wide text-muted-foreground">
-            <span>{CATEGORY_EMOJI[activity.category as ActivityCategory]}</span>
-            <span>
-              {CATEGORY_LABEL[activity.category as ActivityCategory]}
+        <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
+          <Link href="/map">
+            <ArrowLeft />
+            Back to map
+          </Link>
+        </Button>
+
+        <div className="animate-fade-up space-y-3 rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+            <span className="text-base">
+              {CATEGORY_EMOJI[activity.category as ActivityCategory]}
             </span>
+            <span>{CATEGORY_LABEL[activity.category as ActivityCategory]}</span>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight">
             {activity.title}
@@ -90,33 +100,33 @@ export default async function ActivityDetail({ params }: Props) {
               Hosted by {host.display_name}
             </p>
           )}
-        </div>
 
-        <dl className="grid gap-3 rounded-lg border border-border p-4">
-          <Row icon={<Calendar className="size-4" />}>
-            <div>
-              <div>{format(startsAt, "EEE, d MMM · h:mm a")}</div>
-              <div className="text-xs text-muted-foreground">
-                {isPast ? "Started" : "Starts"}{" "}
-                {formatDistanceToNow(startsAt, { addSuffix: true })}
+          <dl className="mt-2 grid gap-3 rounded-xl border border-border bg-background/60 p-4">
+            <Row icon={<Calendar className="size-4" />}>
+              <div>
+                <div>{format(startsAt, "EEE, d MMM · h:mm a")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {isPast ? "Started" : "Starts"}{" "}
+                  {formatDistanceToNow(startsAt, { addSuffix: true })}
+                </div>
               </div>
-            </div>
-          </Row>
-          {activity.location_name && (
-            <Row icon={<MapPin className="size-4" />}>
-              {activity.location_name}
             </Row>
-          )}
-          <Row icon={<Users className="size-4" />}>
-            {total}/{activity.max_participants} joined
-          </Row>
-        </dl>
+            {activity.location_name && (
+              <Row icon={<MapPin className="size-4" />}>
+                {activity.location_name}
+              </Row>
+            )}
+            <Row icon={<Users className="size-4" />}>
+              {total}/{activity.max_participants} joined
+            </Row>
+          </dl>
 
-        {activity.description && (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {activity.description}
-          </p>
-        )}
+          {activity.description && (
+            <p className="whitespace-pre-wrap pt-2 text-sm leading-relaxed">
+              {activity.description}
+            </p>
+          )}
+        </div>
 
         <JoinButton
           activityId={activity.id}
