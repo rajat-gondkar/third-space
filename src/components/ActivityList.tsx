@@ -63,10 +63,10 @@ export function ActivityList({
   const filterActive = isFilterActive(filters);
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-hidden">
+    <div className="flex flex-col gap-3 md:h-full md:overflow-hidden">
       <FiltersBar filters={filters} onChange={setFilters} />
 
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+      <div className="space-y-4 md:flex-1 md:overflow-y-auto md:pr-1">
         {pinnedActivities.length > 0 && (
           <section className="space-y-2">
             <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
