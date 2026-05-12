@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationPicker } from "@/components/LocationPicker";
+import { SuccessModal } from "@/components/SuccessModal";
 import { ACTIVITY_CATEGORIES, CATEGORY_LABEL } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -57,6 +58,7 @@ export function PostForm({ userId }: { userId: string }) {
     null,
   );
   const [submitting, setSubmitting] = useState(false);
+  const [postedId, setPostedId] = useState<string | null>(null);
 
   // Geocoding state
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
@@ -207,8 +209,13 @@ export function PostForm({ userId }: { userId: string }) {
       .from("participants")
       .insert({ activity_id: data.id, user_id: userId });
 
-    toast.success("Activity posted");
-    router.push(`/activity/${data.id}`);
+    setPostedId(data.id);
+    setSubmitting(false);
+  }
+
+  function viewPostedActivity() {
+    if (!postedId) return;
+    router.push(`/activity/${postedId}`);
     router.refresh();
   }
 
@@ -362,6 +369,8 @@ export function PostForm({ userId }: { userId: string }) {
           <p className="text-xs text-muted-foreground">No location yet</p>
         )}
       </div>
+
+      <SuccessModal open={!!postedId} onAction={viewPostedActivity} />
     </form>
   );
 }
