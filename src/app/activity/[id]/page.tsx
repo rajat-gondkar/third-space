@@ -8,7 +8,7 @@ import { JoinButton } from "@/components/JoinButton";
 import { NavBar } from "@/components/NavBar";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   CATEGORY_EMOJI,
   CATEGORY_LABEL,
@@ -16,57 +16,59 @@ import {
   type ActivityCategory,
 } from "@/lib/types";
 
-// Activity row + embedded host profile (1 round-trip via PostgREST embed)
-type ActivityWithHost = Activity & {
-  host: { display_name: string | null; avatar_url: string | null } | null;
-};
-
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ActivityDetail({ params }: Props) {
   const { id } = await params;
-  const user = await getCurrentUser();
-  if (!user) redirect(`/login?next=/activity/${id}`);
-
   const supabase = await createClient();
 
-  // 1 round-trip: activity + embedded host profile
-  // 2 round-trips parallel: participant count + my participant row
-  // → 2 wall-clock RTTs instead of the previous 4 sequential ones.
-  const [activityRes, countRes, myRowRes] = await Promise.all([
-    supabase
-      .from("activities")
-      .select("*, host:profiles(display_name, avatar_url)")
-      .eq("id", id)
-      .single<ActivityWithHost>(),
-    supabase
-      .from("participants")
-      .select("activity_id", { count: "exact", head: true })
-      .eq("activity_id", id),
-    supabase
-      .from("participants")
-      .select("activity_id")
-      .eq("activity_id", id)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?next=/activity/${id}`);
 
-  const { data: activity, error } = activityRes;
+  const { data: activity, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("id", id)
+    .single<Activity>();
+
   if (error || !activity) notFound();
 
-  const host = activity.host;
-  const total = countRes.count ?? 0;
+  const { count: participantCount } = await supabase
+    .from("participants")
+    .select("activity_id", { count: "exact", head: true })
+    .eq("activity_id", id);
+
+  const { data: myRow } = await supabase
+    .from("participants")
+    .select("activity_id")
+    .eq("activity_id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const { data: host } = await supabase
+    .from("profiles")
+    .select("display_name, avatar_url")
+    .eq("id", activity.host_id)
+    .maybeSingle();
+
+  const total = participantCount ?? 0;
   const isFull = total >= activity.max_participants;
-  const hasJoined = !!myRowRes.data;
+  const hasJoined = !!myRow;
   const isHost = activity.host_id === user.id;
   const startsAt = new Date(activity.start_time);
   // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
   const isPast = startsAt.getTime() < Date.now();
 
   const navUser = {
-    email: user.email,
-    name: user.name,
-    avatarUrl: user.avatarUrl,
+    email: user.email ?? "",
+    name:
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      null,
+    avatarUrl:
+      (user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
 
   return (

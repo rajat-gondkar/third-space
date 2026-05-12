@@ -3,7 +3,7 @@ import { Calendar, MapPin, Users } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 const isConfigured = () =>
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -12,7 +12,10 @@ const isConfigured = () =>
 export default async function Home() {
   let signedIn = false;
   if (isConfigured()) {
-    const user = await getCurrentUser();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     signedIn = !!user;
   }
 
