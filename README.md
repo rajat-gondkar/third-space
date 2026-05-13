@@ -4,6 +4,8 @@ Discover and post real-life activities happening near you. V1: Google login, pos
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind v4 + shadcn/ui · Supabase (Auth + Postgres + Realtime) · Leaflet + OpenStreetMap · Vercel.
 
+> 📖 **First time setting this up?** Read [`SETUP.md`](./SETUP.md) — a step-by-step guide for Supabase project creation, Google OAuth (Client ID + Secret), local dev, and deployment to Vercel, written for someone who has never touched these tools before. The quick-start below is the same info in condensed form.
+
 ---
 
 ## Quick start (≈ 10 minutes)
