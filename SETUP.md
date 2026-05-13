@@ -168,7 +168,7 @@ When you first land on your brand-new project's home, Supabase shows you a **"Co
 
 The anon key is a JWT (JSON Web Token) signed with your project's secret. It tells Supabase "this request is coming from an *unauthenticated* visitor; apply the public Row-Level Security policies." Every request your browser code makes uses this key. Anyone visiting your site can read it from the network tab.
 
-The reason that's fine is **Row-Level Security**. Our `0001_init.sql` migration sets up policies like:
+The reason that's fine is **Row-Level Security**. Our migrations set up policies like:
 
 ```sql
 create policy "activities read all"
@@ -196,11 +196,18 @@ Hold onto these two values; you'll paste them into your local `.env.local` in [s
 
 ### 4.3 Apply the database schema
 
-The repo has one SQL migration that creates all the tables, RLS policies, triggers, and the atomic-join RPC. You just run it once.
+The repo ships SQL migrations under `supabase/migrations/`. **Apply each file once, in order**, by copy-pasting it into the Supabase SQL editor. Each migration is idempotent (it uses `create table if not exists`, `drop policy if exists`, etc.), so re-running is safe if you're unsure.
+
+| File                                                  | Adds                                                                                                          |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `0001_init.sql`                                       | Initial tables (`profiles`, `activities`, `participants`), RLS policies, `join_activity` RPC, realtime pub.   |
+| `0002_participants_display_name_and_email.sql`        | `profiles.email`, `participants.display_name`, updated `join_activity(uuid, text)`, updated `handle_new_user`. |
+
+For each file:
 
 1. In the Supabase dashboard, click **SQL editor** in the left sidebar.
 2. Click **+ New query** (top right of the editor pane).
-3. Open the file `supabase/migrations/0001_init.sql` from this repo in your code editor.
+3. Open the migration file from this repo in your code editor.
 4. **Select all** (`Cmd/Ctrl+A`), **Copy** (`Cmd/Ctrl+C`).
 5. **Paste** into the Supabase SQL editor.
 6. Click **Run** (bottom right, or `Cmd/Ctrl+Enter`).
@@ -209,14 +216,13 @@ The repo has one SQL migration that creates all the tables, RLS policies, trigge
 Verify it worked:
 
 1. Click **Table Editor** in the left sidebar.
-2. You should see three tables under the `public` schema:
-   - `profiles`
-   - `activities`
-   - `participants`
+2. You should see three tables under the `public` schema: `profiles`, `activities`, `participants`.
+3. Click `participants` → confirm there's a `display_name` column (added by `0002`).
+4. Click `profiles` → confirm there's an `email` column (added by `0002`).
 
-The migration is idempotent (it uses `create table if not exists`, `drop policy if exists`, etc.), so you can re-run it safely.
-
-> 💡 **Note for sharing**: The file `supabase/migrations/0001_init.sql` is safe to share with anyone — it contains only schema, RLS policies, and stored procedures. No secrets, no data. Hand it to teammates so they can spin up their own dev Supabase project the same way.
+> 💡 **Note for sharing**: Every file under `supabase/migrations/` is safe to share — they contain only schema, RLS policies, and stored procedures. No secrets, no data. Hand them to teammates so they can spin up their own dev Supabase project the same way.
+>
+> 🆕 **Already running an older deployment?** If you applied only `0001_init.sql` previously, just apply `0002_participants_display_name_and_email.sql` on top. Existing rows are backfilled (emails are pulled from `auth.users`) and existing participants get a `NULL` `display_name` — the UI falls back to the user's profile name.
 
 ### 4.4 Confirm Realtime is enabled
 
@@ -408,7 +414,9 @@ src/
     types.ts                        # Activity, ActivityCategory, JoinResult
     utils.ts                        # cn() helper
   proxy.ts                          # Next.js 16 middleware (was middleware.ts)
-supabase/migrations/0001_init.sql   # full schema, RLS, triggers, RPC, realtime publication
+supabase/migrations/
+├── 0001_init.sql                                       # initial schema, RLS, RPC, realtime publication
+└── 0002_participants_display_name_and_email.sql        # profiles.email + participants.display_name + updated RPC
 ```
 
 Server vs Client component cheatsheet:
@@ -585,8 +593,8 @@ npm run build                # Production build (catches type + lint errors)
 npm run start                # Run the production build locally
 npm run lint                 # ESLint
 
-# Database (re-run the migration anytime — it's idempotent)
-# Just paste supabase/migrations/0001_init.sql into Supabase SQL editor.
+# Database (re-run any migration anytime — they're idempotent)
+# Paste each file in supabase/migrations/ into the Supabase SQL editor, in order.
 
 # Git
 git status
@@ -601,6 +609,6 @@ git push -u origin feat/my-feature   # Vercel auto-creates a preview deploy
 
 - The V1 scope (locked) and V2 backlog live in `.cursor/plans/third-space-v1-plan_*.plan.md`.
 - For day-to-day docs (what the project is, what's in scope), see `README.md`.
-- For the schema and RPC, see `supabase/migrations/0001_init.sql` (well-commented).
+- For the schema and RPC, see `supabase/migrations/` (each file is well-commented).
 
 Happy hacking. ✌️

@@ -15,7 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { BlockingLoader } from "@/components/BlockingLoader";
 import { LocationPicker } from "@/components/LocationPicker";
 import { SuccessModal } from "@/components/SuccessModal";
-import { ACTIVITY_CATEGORIES, CATEGORY_LABEL } from "@/lib/types";
+import {
+  ACTIVITY_CATEGORIES,
+  CATEGORY_LABEL,
+  type Activity,
+} from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import {
   forwardGeocode,
@@ -53,10 +57,29 @@ function defaultStartLocalISO() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function PostForm({ userId }: { userId: string }) {
+function toLocalDatetimeInput(iso: string) {
+  // <input type="datetime-local"> expects "YYYY-MM-DDTHH:mm" in *local* time.
+  // `new Date(iso)` parses the UTC ISO; we then format using the local TZ.
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+type PostFormProps = {
+  userId: string;
+  /**
+   * When provided, the form goes into edit mode: it pre-fills with the
+   * activity, submits an UPDATE (not INSERT), and on success navigates back
+   * to the detail page without confetti.
+   */
+  editing?: Activity;
+};
+
+export function PostForm({ userId, editing }: PostFormProps) {
   const router = useRouter();
+  const isEdit = Boolean(editing);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null,
+    editing ? { lat: editing.lat, lng: editing.lng } : null,
   );
   const [submitting, setSubmitting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
@@ -71,29 +94,54 @@ export function PostForm({ userId }: { userId: string }) {
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  const sourceRef = useRef<"user" | "system">("user");
+  // In edit mode the field is prefilled — mark that as "system" so the
+  // debounced forward-geocode effect treats it as already-resolved and
+  // doesn't pop a suggestions dropdown on first paint.
+  const sourceRef = useRef<"user" | "system">(editing ? "system" : "user");
   const fwdAbortRef = useRef<AbortController | null>(null);
   const revAbortRef = useRef<AbortController | null>(null);
   const locationFieldRef = useRef<HTMLDivElement>(null);
 
   const defaultStart = useMemo(() => defaultStartLocalISO(), []);
 
+  // Edit-mode: when editing a past activity, we relax the "must be in the
+  // future" constraint so the user can still save other field changes.
+  const editingStartIsPast = useMemo(
+    () => (editing ? new Date(editing.start_time).getTime() < Date.now() : false),
+    [editing],
+  );
+  const effectiveSchema = useMemo(() => {
+    if (editingStartIsPast) {
+      return schema.extend({ start_time: z.string().min(1, "Pick a start time") });
+    }
+    return schema;
+  }, [editingStartIsPast]);
+
   const {
     register,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      title: "",
-      description: "",
-      category: "sport",
-      location_name: "",
-      start_time: defaultStart,
-      max_participants: 6,
-    },
+    resolver: zodResolver(effectiveSchema),
+    defaultValues: editing
+      ? {
+          title: editing.title,
+          description: editing.description ?? "",
+          category: editing.category,
+          location_name: editing.location_name ?? "",
+          start_time: toLocalDatetimeInput(editing.start_time),
+          max_participants: editing.max_participants,
+        }
+      : {
+          title: "",
+          description: "",
+          category: "sport",
+          location_name: "",
+          start_time: defaultStart,
+          max_participants: 6,
+        },
   });
 
   const locationValue = watch("location_name") ?? "";
@@ -190,22 +238,49 @@ export function PostForm({ userId }: { userId: string }) {
     }
     submitLockRef.current = true;
     setSubmitting(true);
-    setLoadingMessage("Sit tight — we're creating your space!");
+    setLoadingMessage(
+      isEdit
+        ? "Saving your changes…"
+        : "Sit tight — we're creating your space!",
+    );
     const supabase = createClient();
+
+    const payload = {
+      title: values.title,
+      description: values.description || null,
+      category: values.category,
+      location_name: values.location_name || null,
+      lat: coords.lat,
+      lng: coords.lng,
+      start_time: new Date(values.start_time).toISOString(),
+      max_participants: values.max_participants,
+    };
+
+    if (isEdit && editing) {
+      // RLS policy `activities update host` already restricts this to the host.
+      const { error } = await supabase
+        .from("activities")
+        .update(payload)
+        .eq("id", editing.id);
+
+      if (error) {
+        toast.error(error.message);
+        submitLockRef.current = false;
+        setSubmitting(false);
+        setLoadingMessage(null);
+        return;
+      }
+
+      toast.success("Activity updated");
+      setLoadingMessage("Opening your activity…");
+      router.push(`/activity/${editing.id}`);
+      router.refresh();
+      return;
+    }
 
     const { data, error } = await supabase
       .from("activities")
-      .insert({
-        host_id: userId,
-        title: values.title,
-        description: values.description || null,
-        category: values.category,
-        location_name: values.location_name || null,
-        lat: coords.lat,
-        lng: coords.lng,
-        start_time: new Date(values.start_time).toISOString(),
-        max_participants: values.max_participants,
-      })
+      .insert({ host_id: userId, ...payload })
       .select("id")
       .single();
 
@@ -362,13 +437,32 @@ export function PostForm({ userId }: { userId: string }) {
           />
         </div>
 
-        <Button
-          type="submit"
-          disabled={submitting}
-          className="w-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md ring-1 ring-white/20 transition-transform hover:scale-[1.01] hover:opacity-95"
-        >
-          {submitting ? "Posting…" : "Post activity"}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {isEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={submitting}
+              className="sm:w-32"
+            >
+              Cancel
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={submitting || (isEdit && !isDirty)}
+            className="flex-1 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md ring-1 ring-white/20 transition-transform hover:scale-[1.01] hover:opacity-95"
+          >
+            {submitting
+              ? isEdit
+                ? "Saving…"
+                : "Posting…"
+              : isEdit
+                ? "Save changes"
+                : "Post activity"}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -389,12 +483,19 @@ export function PostForm({ userId }: { userId: string }) {
         )}
       </div>
 
-      <SuccessModal open={!!postedId} onAction={viewPostedActivity} />
+      {/* Confetti modal is for the create flow only — edits go straight back. */}
+      {!isEdit && (
+        <SuccessModal open={!!postedId} onAction={viewPostedActivity} />
+      )}
       <BlockingLoader
         open={!!loadingMessage}
         message={loadingMessage ?? ""}
         subMessage={
-          submitting ? "Pinning it to the map…" : "Almost there."
+          submitting
+            ? isEdit
+              ? "Saving your changes…"
+              : "Pinning it to the map…"
+            : "Almost there."
         }
       />
     </form>
