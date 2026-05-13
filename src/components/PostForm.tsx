@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -103,12 +103,13 @@ export function PostForm({ userId, editing }: PostFormProps) {
   const locationFieldRef = useRef<HTMLDivElement>(null);
 
   const defaultStart = useMemo(() => defaultStartLocalISO(), []);
+  const [renderTime] = useState(() => Date.now());
 
   // Edit-mode: when editing a past activity, we relax the "must be in the
   // future" constraint so the user can still save other field changes.
   const editingStartIsPast = useMemo(
-    () => (editing ? new Date(editing.start_time).getTime() < Date.now() : false),
-    [editing],
+    () => (editing ? new Date(editing.start_time).getTime() < renderTime : false),
+    [editing, renderTime],
   );
   const effectiveSchema = useMemo(() => {
     if (editingStartIsPast) {
@@ -120,7 +121,7 @@ export function PostForm({ userId, editing }: PostFormProps) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors, isDirty },
   } = useForm<FormValues>({
@@ -144,7 +145,7 @@ export function PostForm({ userId, editing }: PostFormProps) {
         },
   });
 
-  const locationValue = watch("location_name") ?? "";
+  const locationValue = useWatch({ control, name: "location_name" }) ?? "";
 
   // Map click (or suggestion-driven move) → reverse-geocode → set location label.
   function handleCoordsFromMap(c: { lat: number; lng: number }) {
@@ -178,9 +179,11 @@ export function PostForm({ userId, editing }: PostFormProps) {
     }
     const q = locationValue.trim();
     if (q.length < 3) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
+      const handle = window.setTimeout(() => {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }, 0);
+      return () => window.clearTimeout(handle);
     }
     const handle = window.setTimeout(() => {
       fwdAbortRef.current?.abort();
@@ -315,7 +318,9 @@ export function PostForm({ userId, editing }: PostFormProps) {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={(event) => {
+        void handleSubmit(onSubmit)(event);
+      }}
       className="grid gap-6 lg:grid-cols-[1fr_1fr]"
     >
       <div className="space-y-4">

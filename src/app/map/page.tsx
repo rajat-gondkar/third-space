@@ -66,7 +66,7 @@ export default async function MapPage() {
           <Map center={DEFAULT_CENTER} activities={activities} />
         </div>
 
-        <aside className="flex flex-col border-t border-border bg-background p-4 pb-[30px] md:min-h-0 md:overflow-hidden md:border-l md:border-t-0 md:pb-4">
+        <aside className="flex flex-col border-t border-border bg-background p-4 pb-24 md:min-h-0 md:overflow-hidden md:border-l md:border-t-0 md:pb-4">
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">

@@ -31,7 +31,9 @@ export function JoinModal({
 
   // Reset to prefill every time the modal re-opens.
   useEffect(() => {
-    if (open) setName(defaultName);
+    if (!open) return;
+    const t = window.setTimeout(() => setName(defaultName), 0);
+    return () => window.clearTimeout(t);
   }, [open, defaultName]);
 
   // Lock scroll + autofocus when open.

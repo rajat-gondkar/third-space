@@ -133,15 +133,9 @@ function computeMenuPosition(rect: DOMRect): { top: number; left: number } {
 
 export function ShareButton({ path, title, text, coords, locationName }: Props) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Hydration-safe portal mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Capture trigger position whenever the menu opens
   useLayoutEffect(() => {
@@ -241,7 +235,9 @@ export function ShareButton({ path, title, text, coords, locationName }: Props) 
       >
         <Share2 className="size-4" />
       </button>
-      {mounted && menu ? createPortal(menu, document.body) : null}
+      {menu && typeof document !== "undefined"
+        ? createPortal(menu, document.body)
+        : null}
     </>
   );
 }
