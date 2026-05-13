@@ -4,19 +4,31 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { JoinModal } from "@/components/JoinModal";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type { JoinResult } from "@/lib/types";
 
 type Props = {
   activityId: string;
+  activityTitle: string;
   isFull: boolean;
   hasJoined: boolean;
   isPast: boolean;
+  /** Prefill value for the display-name input (usually profile display_name). */
+  defaultDisplayName: string;
 };
 
-export function JoinButton({ activityId, isFull, hasJoined, isPast }: Props) {
+export function JoinButton({
+  activityId,
+  activityTitle,
+  isFull,
+  hasJoined,
+  isPast,
+  defaultDisplayName,
+}: Props) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   if (isPast) {
@@ -43,11 +55,12 @@ export function JoinButton({ activityId, isFull, hasJoined, isPast }: Props) {
     );
   }
 
-  async function join() {
+  async function performJoin(displayName: string) {
     setLoading(true);
     const supabase = createClient();
     const { data, error } = await supabase.rpc("join_activity", {
       p_activity: activityId,
+      p_display_name: displayName,
     });
 
     if (error) {
@@ -57,6 +70,8 @@ export function JoinButton({ activityId, isFull, hasJoined, isPast }: Props) {
     }
 
     const result = data as JoinResult;
+    setLoading(false);
+    setOpen(false);
     if (result === "ok") {
       toast.success("You’re in");
       router.refresh();
@@ -70,12 +85,28 @@ export function JoinButton({ activityId, isFull, hasJoined, isPast }: Props) {
       toast.message("You’ve already joined");
       router.refresh();
     }
-    setLoading(false);
   }
 
   return (
-    <Button onClick={join} disabled={loading} className="w-full">
-      {loading ? "Joining…" : "Join activity"}
-    </Button>
+    <>
+      <Button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={loading}
+        className="w-full"
+      >
+        {loading ? "Joining…" : "Join activity"}
+      </Button>
+      <JoinModal
+        open={open}
+        defaultName={defaultDisplayName}
+        activityTitle={activityTitle}
+        loading={loading}
+        onCancel={() => {
+          if (!loading) setOpen(false);
+        }}
+        onConfirm={performJoin}
+      />
+    </>
   );
 }

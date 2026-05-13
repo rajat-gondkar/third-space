@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Pencil, Users } from "lucide-react";
 
 import { DeleteActivityButton } from "@/components/DeleteActivityButton";
 import { JoinButton } from "@/components/JoinButton";
 import { NavBar } from "@/components/NavBar";
+import { ParticipantsList } from "@/components/ParticipantsList";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -35,27 +36,58 @@ export default async function ActivityDetail({ params }: Props) {
 
   if (error || !activity) notFound();
 
-  const { count: participantCount } = await supabase
+  // Pull the participants together with their profile in one PostgREST query
+  // (FK-implicit join via `participants_user_id_fkey` → `profiles`). Caps the
+  // list to keep the accordion lightweight; total count drives the `(N more)`
+  // indicator.
+  const { data: participants, count: participantCount } = await supabase
     .from("participants")
-    .select("activity_id", { count: "exact", head: true })
-    .eq("activity_id", id);
-
-  const { data: myRow } = await supabase
-    .from("participants")
-    .select("activity_id")
+    .select(
+      "user_id, display_name, joined_at, profile:profiles!participants_user_id_fkey(email, display_name, avatar_url)",
+      { count: "exact" },
+    )
     .eq("activity_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+    .order("joined_at", { ascending: true })
+    .limit(50);
 
-  const { data: host } = await supabase
+  // Fetch viewer's profile separately for the JoinModal prefill.
+  const { data: viewerProfile } = await supabase
     .from("profiles")
-    .select("display_name, avatar_url")
-    .eq("id", activity.host_id)
+    .select("display_name")
+    .eq("id", user.id)
     .maybeSingle();
 
-  const total = participantCount ?? 0;
+  // PostgREST gives us a typed-loose row — narrow it before mapping.
+  type ParticipantRow = {
+    user_id: string;
+    display_name: string | null;
+    profile:
+      | { email: string | null; display_name: string | null }
+      | { email: string | null; display_name: string | null }[]
+      | null;
+  };
+  const rows = (participants ?? []) as ParticipantRow[];
+
+  const people = rows.map((p) => {
+    // Supabase typings sometimes infer the embedded row as an array; normalise.
+    const profile = Array.isArray(p.profile) ? p.profile[0] : p.profile;
+    return {
+      userId: p.user_id,
+      displayName:
+        p.display_name?.trim() ||
+        profile?.display_name?.trim() ||
+        "Someone",
+      email: profile?.email ?? null,
+      isHost: p.user_id === activity.host_id,
+    };
+  });
+  // Show host first, then by join order.
+  people.sort((a, b) => Number(b.isHost) - Number(a.isHost));
+
+  const hostPerson = people.find((p) => p.isHost);
+  const total = participantCount ?? rows.length;
   const isFull = total >= activity.max_participants;
-  const hasJoined = !!myRow;
+  const hasJoined = rows.some((p) => p.user_id === user.id);
   const isHost = activity.host_id === user.id;
   const startsAt = new Date(activity.start_time);
   // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
@@ -97,9 +129,9 @@ export default async function ActivityDetail({ params }: Props) {
           <h2 className="text-2xl font-semibold tracking-tight">
             {activity.title}
           </h2>
-          {host?.display_name && (
+          {hostPerson?.displayName && (
             <p className="text-sm text-muted-foreground">
-              Hosted by {host.display_name}
+              Hosted by {hostPerson.displayName}
             </p>
           )}
 
@@ -128,17 +160,34 @@ export default async function ActivityDetail({ params }: Props) {
               {activity.description}
             </p>
           )}
+
+          <div className="pt-2">
+            <ParticipantsList people={people} total={total} />
+          </div>
         </div>
 
         <JoinButton
           activityId={activity.id}
+          activityTitle={activity.title}
           isFull={isFull}
           hasJoined={hasJoined}
           isPast={isPast}
+          defaultDisplayName={
+            viewerProfile?.display_name?.trim() ||
+            (user.user_metadata?.full_name as string | undefined)?.trim() ||
+            (user.user_metadata?.name as string | undefined)?.trim() ||
+            ""
+          }
         />
 
         {isHost && (
-          <div className="flex justify-center">
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/activity/${activity.id}/edit`}>
+                <Pencil />
+                Edit activity
+              </Link>
+            </Button>
             <DeleteActivityButton
               activityId={activity.id}
               activityTitle={activity.title}

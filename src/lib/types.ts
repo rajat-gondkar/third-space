@@ -26,9 +26,21 @@ export const CATEGORY_LABEL: Record<ActivityCategory, string> = {
 
 export type Profile = {
   id: string;
+  email: string | null;
   display_name: string | null;
   avatar_url: string | null;
   created_at: string;
+};
+
+export type Participant = {
+  activity_id: string;
+  user_id: string;
+  display_name: string | null;
+  joined_at: string;
+};
+
+export type ParticipantWithProfile = Participant & {
+  profile: Pick<Profile, "email" | "display_name" | "avatar_url"> | null;
 };
 
 export type Activity = {

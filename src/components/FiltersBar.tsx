@@ -53,13 +53,24 @@ export function FiltersBar({
 
       <label
         className={cn(
-          "flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs shadow-sm transition-colors",
+          "relative flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs shadow-sm transition-colors",
           filters.mode === "date"
             ? "border-primary/60 bg-primary/10"
             : "border-border bg-card hover:border-primary/40",
         )}
       >
         <CalendarDays className="size-3.5 text-muted-foreground" />
+        {/* Native <input type="date"> ignores the `placeholder` attribute on
+            every browser, so we layer a visible label underneath the input and
+            hide it the moment a date is picked. */}
+        {!filters.date && (
+          <span
+            aria-hidden
+            className="pointer-events-none select-none text-muted-foreground"
+          >
+            Pick a date
+          </span>
+        )}
         <input
           type="date"
           value={filters.date}
@@ -70,7 +81,12 @@ export function FiltersBar({
               mode: e.target.value ? "date" : "all",
             })
           }
-          className="bg-transparent text-xs outline-none [color-scheme:light] dark:[color-scheme:dark]"
+          className={cn(
+            "bg-transparent text-xs outline-none [color-scheme:light] dark:[color-scheme:dark]",
+            // When empty, the native picker still occupies space — we collapse
+            // its rendered text to 0 width so only our placeholder is visible.
+            !filters.date && "absolute inset-0 w-full opacity-0",
+          )}
           aria-label="Filter by date"
         />
       </label>
