@@ -14,6 +14,7 @@ const MapClient = dynamic(() => import("./MapClient"), {
 export function Map(props: {
   center: { lat: number; lng: number };
   activities: ActivityWithCount[];
+  radius?: number;
 }) {
   return <MapClient {...props} />;
 }

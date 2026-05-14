@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
@@ -19,24 +19,8 @@ type Coords = { lat: number; lng: number };
 type MapClientProps = {
   center: Coords;
   activities: ActivityWithCount[];
+  radius?: number;
 };
-
-function useGeolocatedCenter(fallback: Coords): Coords {
-  const [center, setCenter] = useState<Coords>(fallback);
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        setCenter({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }),
-      () => {},
-      { timeout: 5000, maximumAge: 60_000 },
-    );
-  }, []);
-  return center;
-}
 
 function categoryIcon(category: ActivityWithCount["category"]) {
   const emoji = CATEGORY_EMOJI[category] ?? "📍";
@@ -59,12 +43,31 @@ function categoryIcon(category: ActivityWithCount["category"]) {
 
 function Recenter({ center }: { center: Coords }) {
   const map = useMap();
-  map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
+
+  useEffect(() => {
+    map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
+  }, [center.lat, center.lng, map]);
+
   return null;
 }
 
-export default function MapClient({ center, activities }: MapClientProps) {
-  const liveCenter = useGeolocatedCenter(center);
+function RadiusZoom({ radius }: { radius: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const zoom =
+      radius <= 500 ? 16 : radius <= 1000 ? 15 : radius <= 2000 ? 14 : 13;
+    map.setZoom(zoom, { animate: true });
+  }, [map, radius]);
+
+  return null;
+}
+
+export default function MapClient({
+  center,
+  activities,
+  radius = 5000,
+}: MapClientProps) {
   // Dedupe by id so a duplicate row never produces two stacked markers at the
   // same coordinates (which would otherwise be indistinguishable on the map).
   const uniqueActivities = useMemo(() => {
@@ -77,6 +80,7 @@ export default function MapClient({ center, activities }: MapClientProps) {
     }
     return out;
   }, [activities]);
+
   const markers = useMemo(
     () =>
       uniqueActivities.map((a) => (
@@ -90,9 +94,11 @@ export default function MapClient({ center, activities }: MapClientProps) {
               <div className="text-xs uppercase tracking-wide text-zinc-500">
                 {CATEGORY_LABEL[a.category]}
               </div>
-              <div className="font-semibold text-base">{a.title}</div>
+              <div className="text-base font-semibold">{a.title}</div>
               {a.location_name && (
-                <div className="text-xs text-zinc-600">{a.location_name}</div>
+                <div className="text-xs text-zinc-600">
+                  {a.location_name}
+                </div>
               )}
               <div className="text-xs text-zinc-600">
                 Starts{" "}
@@ -105,7 +111,7 @@ export default function MapClient({ center, activities }: MapClientProps) {
               </div>
               <Link
                 href={`/activity/${a.id}`}
-                className="inline-block mt-1 text-sm font-medium text-blue-600 hover:underline"
+                className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline"
               >
                 View →
               </Link>
@@ -118,12 +124,13 @@ export default function MapClient({ center, activities }: MapClientProps) {
 
   return (
     <MapContainer
-      center={[liveCenter.lat, liveCenter.lng]}
+      center={[center.lat, center.lng]}
       zoom={14}
       scrollWheelZoom
       className="h-full w-full"
     >
-      <Recenter center={liveCenter} />
+      <Recenter center={center} />
+      <RadiusZoom radius={radius} />
       <LocateControl />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
