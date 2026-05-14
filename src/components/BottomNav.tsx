@@ -11,8 +11,14 @@ const tabs = [
   { href: "/spaces", label: "Spaces", icon: Map },
 ];
 
+const HIDDEN_PATHS = ["/", "/login", "/onboarding"];
+
 export function BottomNav() {
   const pathname = usePathname();
+
+  if (HIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return null;
+  }
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">

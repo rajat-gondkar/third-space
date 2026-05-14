@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveProfileId } from "@/lib/auth-identity";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -26,7 +27,8 @@ export async function POST(request: NextRequest) {
   }
 
   const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${user.id}/${Date.now()}.${ext}`;
+  const canonicalId = await resolveProfileId(supabase, user.id);
+  const path = `${canonicalId}/${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("avatars")

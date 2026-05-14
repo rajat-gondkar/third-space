@@ -11,6 +11,7 @@ import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { checkOnboarding } from "@/lib/onboarding";
+import { resolveProfile } from "@/lib/auth-identity";
 import {
   CATEGORY_EMOJI,
   CATEGORY_LABEL,
@@ -49,12 +50,8 @@ export default async function ActivityDetail({ params }: Props) {
     .order("joined_at", { ascending: true })
     .limit(50);
 
-  // Fetch viewer's profile separately for the JoinModal prefill.
-  const { data: viewerProfile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Fetch viewer's canonical profile for the JoinModal prefill.
+  const viewerProfile = await resolveProfile(supabase, user.id);
 
   // PostgREST gives us a typed-loose row — narrow it before mapping.
   type ParticipantRow = {
@@ -194,7 +191,7 @@ export default async function ActivityDetail({ params }: Props) {
           hasJoined={hasJoined}
           isPast={isPast}
           defaultDisplayName={
-            viewerProfile?.display_name?.trim() ||
+            (viewerProfile as { display_name?: string | null } | null)?.display_name?.trim() ||
             (user.user_metadata?.full_name as string | undefined)?.trim() ||
             (user.user_metadata?.name as string | undefined)?.trim() ||
             ""

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isCollegeEmail, getCollegeName } from "@/lib/college-domains";
 import { sendOtpEmail } from "@/lib/email";
+import { resolveProfileId } from "@/lib/auth-identity";
 
 function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -46,11 +47,13 @@ export async function POST(request: NextRequest) {
   const collegeName = getCollegeName(collegeEmail);
 
   // Check if this college email is already claimed by a different user
+  const canonicalId = await resolveProfileId(supabase, user.id);
+
   const { data: existing, error: existingErr } = await supabase
     .from("profiles")
     .select("id")
     .eq("college_email", collegeEmail)
-    .neq("id", user.id)
+    .neq("id", canonicalId)
     .maybeSingle();
 
   if (existingErr) {
@@ -80,7 +83,6 @@ export async function POST(request: NextRequest) {
 
   if (delErr) {
     console.error("[verify-college-email] delete old OTPs error:", delErr);
-    // non-fatal – continue
   }
 
   const { error: insertErr } = await supabase
@@ -101,7 +103,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Send the OTP via email (never 500 — if Resend fails, show OTP on screen)
   const emailResult = await sendOtpEmail(collegeEmail, otp);
   const devFallback = emailResult.dev === true;
 
@@ -110,7 +111,6 @@ export async function POST(request: NextRequest) {
       ? "OTP generated (email not sent — shown below for dev)."
       : "OTP sent to your college email.",
     college_name: collegeName,
-    // Always include OTP if email didn't actually go through
     ...(devFallback || isDev ? { otp } : {}),
   });
 }
@@ -186,6 +186,42 @@ export async function PUT(request: NextRequest) {
     .update({ verified: true })
     .eq("id", record.id);
 
+  // Resolve canonical profile id before updating
+  const canonicalId = await resolveProfileId(supabase, user.id);
+
+  // If no profile exists for this canonical id but one exists with the same
+  // college_email, link the current auth user to it (self-healing for
+  // accounts that were broken by the old 0004 migration).
+  const { data: targetProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", canonicalId)
+    .maybeSingle();
+
+  if (!targetProfile) {
+    // Try to find an existing profile with this college email
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("college_email", collegeEmail)
+      .eq("college_email_verified", true)
+      .maybeSingle();
+
+    if (existingProfile) {
+      // Link the current auth user to the existing profile
+      await supabase
+        .from("profiles")
+        .update({ linked_user_id: user.id })
+        .eq("id", existingProfile.id);
+
+      return NextResponse.json({
+        message: "College email verified. Account linked.",
+        college_email: collegeEmail,
+        college_name: collegeName,
+      });
+    }
+  }
+
   // Update profile
   const { error: profileError } = await supabase
     .from("profiles")
@@ -194,7 +230,7 @@ export async function PUT(request: NextRequest) {
       college_email_verified: true,
       college_name: collegeName,
     })
-    .eq("id", user.id);
+    .eq("id", canonicalId);
 
   if (profileError) {
     console.error("[verify-college-email] profile update error:", profileError);

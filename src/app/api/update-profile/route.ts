@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveProfileId } from "@/lib/auth-identity";
 
 function isValidPhone(phone: string): boolean {
   const cleaned = phone.replace(/\s+/g, "");
@@ -67,6 +68,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const canonicalId = await resolveProfileId(supabase, user.id);
+
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -77,7 +80,7 @@ export async function POST(request: NextRequest) {
       avatar_url: avatar_url ?? null,
       onboarding_complete: true,
     })
-    .eq("id", user.id);
+    .eq("id", canonicalId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

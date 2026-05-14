@@ -1,15 +1,12 @@
 import { isCollegeEmail } from "@/lib/college-domains";
+import { resolveProfile } from "@/lib/auth-identity";
 
 export async function checkOnboarding(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   userId: string,
   userEmail?: string,
 ): Promise<boolean> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_complete")
-    .eq("id", userId)
-    .maybeSingle();
+  const profile = await resolveProfile(supabase, userId);
 
   if (profile?.onboarding_complete) return true;
 
@@ -25,32 +22,23 @@ export async function checkOnboarding(
       .maybeSingle();
 
     if (linked?.id) {
-      // Auto-complete onboarding for this new account by copying
-      // from the linked profile.
-      const { data: source } = await supabase
+      // Auto-complete onboarding for this new account by linking it.
+      // If the current auth user already has a stray profile, delete it first
+      // so the linked_user_id update doesn't conflict.
+      const { data: stray } = await supabase
         .from("profiles")
-        .select(
-          "display_name, avatar_url, phone, age, gender, college_email, college_name",
-        )
-        .eq("id", linked.id)
+        .select("id")
+        .eq("id", userId)
         .maybeSingle();
 
-      if (source) {
-        await supabase
-          .from("profiles")
-          .update({
-            onboarding_complete: true,
-            display_name: source.display_name,
-            avatar_url: source.avatar_url,
-            phone: source.phone,
-            age: source.age,
-            gender: source.gender,
-            college_email: source.college_email,
-            college_email_verified: true,
-            college_name: source.college_name,
-          })
-          .eq("id", userId);
+      if (stray) {
+        await supabase.from("profiles").delete().eq("id", userId);
       }
+
+      await supabase
+        .from("profiles")
+        .update({ linked_user_id: userId })
+        .eq("id", linked.id);
 
       return true;
     }

@@ -88,7 +88,8 @@ src/
       server.ts                 # Server Component Supabase client
       middleware.ts             # Session refresh + route protection (+ /spaces)
     college-domains.ts          # isCollegeEmail() + getCollegeName() from JSON
-    onboarding.ts               # checkOnboarding() — checks flag + linked college accounts
+    auth-identity.ts            # resolveProfile() / resolveProfileId() — finds canonical profile via linked_user_id fallback
+    onboarding.ts               # checkOnboarding() — uses resolveProfile() for linked accounts
     email.ts                    # sendOtpEmail() via Resend (dev mode fallback)
     types.ts                    # TypeScript types (Activity, Profile, Venue, JoinResult, etc.)
     utils.ts                    # cn() helper for Tailwind class merging
@@ -108,6 +109,8 @@ supabase/migrations/
   0001_init.sql                 # DB schema, RLS policies, triggers, RPC, realtime
   0002_participants_display_name_and_email.sql  # Adds email + display_name columns
   0003_onboarding_profiles.sql  # Adds onboarding columns, OTP table, avatars bucket
+  0004_link_accounts.sql        # ON UPDATE CASCADE on profile FKs + unique verified college_email index + trigger merge for seamless login (superseded by 0005)
+  0005_bidirectional_linking.sql # linked_user_id column + resolve_canonical_id() function + normalised triggers + updated RLS for bidirectional account linking
 db/venues/
   schema.sql                    # PostGIS schema: categories, venues, venue_tags
   seed.ts                       # Seeds OSM venues for a city

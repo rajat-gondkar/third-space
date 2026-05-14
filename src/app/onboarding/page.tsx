@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { isCollegeEmail, getCollegeName } from "@/lib/college-domains";
 import { createClient } from "@/lib/supabase/server";
+import { resolveProfile } from "@/lib/auth-identity";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 
 export default async function OnboardingPage({
@@ -15,13 +16,7 @@ export default async function OnboardingPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/onboarding");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      "onboarding_complete, college_email, college_email_verified, college_name, display_name, avatar_url, phone, age, gender",
-    )
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await resolveProfile(supabase, user.id);
 
   if (profile?.onboarding_complete) {
     const { next } = await searchParams;
@@ -52,13 +47,13 @@ export default async function OnboardingPage({
           collegeNameFromEmail={collegeFromEmail}
           collegeEmailVerified={isCollege ? true : false}
           initialDisplayName={
-            profile?.display_name ??
+            (profile as { display_name?: string | null } | null)?.display_name ??
             (user.user_metadata?.full_name as string | undefined) ??
             (user.user_metadata?.name as string | undefined) ??
             ""
           }
           initialAvatarUrl={
-            (profile?.avatar_url ??
+            ((profile as { avatar_url?: string | null } | null)?.avatar_url ??
               (user.user_metadata?.avatar_url as string | undefined)) ??
             null
           }
