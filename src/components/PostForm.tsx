@@ -73,13 +73,26 @@ type PostFormProps = {
    * to the detail page without confetti.
    */
   editing?: Activity;
+  /**
+   * When provided, the form pre-fills the location from a venue (e.g. from /spaces).
+   */
+  venue?: {
+    lat: number;
+    lng: number;
+    name: string;
+    address: string;
+  };
 };
 
-export function PostForm({ userId, editing }: PostFormProps) {
+export function PostForm({ userId, editing, venue }: PostFormProps) {
   const router = useRouter();
   const isEdit = Boolean(editing);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    editing ? { lat: editing.lat, lng: editing.lng } : null,
+    editing
+      ? { lat: editing.lat, lng: editing.lng }
+      : venue
+        ? { lat: venue.lat, lng: venue.lng }
+        : null,
   );
   const [submitting, setSubmitting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
@@ -94,10 +107,12 @@ export function PostForm({ userId, editing }: PostFormProps) {
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  // In edit mode the field is prefilled — mark that as "system" so the
-  // debounced forward-geocode effect treats it as already-resolved and
-  // doesn't pop a suggestions dropdown on first paint.
-  const sourceRef = useRef<"user" | "system">(editing ? "system" : "user");
+  // In edit mode or when pre-filled from a venue the field is already set —
+  // mark that as "system" so the debounced forward-geocode effect doesn't
+  // pop a suggestions dropdown on first paint.
+  const sourceRef = useRef<"user" | "system">(
+    editing || venue ? "system" : "user",
+  );
   const fwdAbortRef = useRef<AbortController | null>(null);
   const revAbortRef = useRef<AbortController | null>(null);
   const locationFieldRef = useRef<HTMLDivElement>(null);
@@ -139,7 +154,11 @@ export function PostForm({ userId, editing }: PostFormProps) {
           title: "",
           description: "",
           category: "sport",
-          location_name: "",
+          location_name: venue
+            ? venue.address
+              ? `${venue.name}, ${venue.address}`
+              : venue.name
+            : "",
           start_time: defaultStart,
           max_participants: 6,
         },
@@ -475,7 +494,9 @@ export function PostForm({ userId, editing }: PostFormProps) {
         <div className="h-[360px] w-full overflow-hidden rounded-lg border border-border shadow-sm">
           <LocationPicker
             value={coords}
-            defaultCenter={DEFAULT_CENTER}
+            defaultCenter={
+              venue ? { lat: venue.lat, lng: venue.lng } : DEFAULT_CENTER
+            }
             onChange={handleCoordsFromMap}
           />
         </div>

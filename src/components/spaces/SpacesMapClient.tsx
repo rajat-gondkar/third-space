@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
+import { LocateControl } from "@/components/LocateControl";
 import type { VenueCategorySlug, VenueWithDistance } from "@/lib/venues/types";
 
 type Coords = { lat: number; lng: number };
@@ -110,6 +111,7 @@ export default function SpacesMapClient({
     >
       <Recenter center={center} />
       <RadiusZoom radius={radius} />
+      <LocateControl />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

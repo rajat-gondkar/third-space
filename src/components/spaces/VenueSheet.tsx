@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, MapPin, X } from "lucide-react";
+import { CalendarPlus, ExternalLink, MapPin, X } from "lucide-react";
 
 import { fetchVenueDetail, upvoteVenueTag } from "@/lib/venues/client";
 import type {
@@ -263,6 +263,15 @@ export function VenueSheet({
                 </p>
               )}
             </div>
+
+            <Link
+              href={`/post?lat=${activeVenue.lat}&lng=${activeVenue.lng}&name=${encodeURIComponent(activeVenue.name)}&address=${encodeURIComponent(activeVenue.address ?? "")}`}
+              onClick={onClose}
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md ring-1 ring-white/20 transition-transform hover:scale-[1.02] hover:opacity-95"
+            >
+              <CalendarPlus className="size-4" />
+              Start an event here
+            </Link>
           </section>
 
           {highlightTags.length > 0 && (

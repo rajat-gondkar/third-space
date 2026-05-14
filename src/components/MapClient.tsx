@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+
+import { LocateControl } from "./LocateControl";
 import { formatDistanceToNow } from "date-fns";
 
 import {
@@ -122,6 +124,7 @@ export default function MapClient({ center, activities }: MapClientProps) {
       className="h-full w-full"
     >
       <Recenter center={liveCenter} />
+      <LocateControl />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

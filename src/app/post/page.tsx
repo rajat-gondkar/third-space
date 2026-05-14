@@ -4,7 +4,16 @@ import { NavBar } from "@/components/NavBar";
 import { PostForm } from "@/components/PostForm";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function PostPage() {
+type Props = {
+  searchParams: Promise<{
+    lat?: string;
+    lng?: string;
+    name?: string;
+    address?: string;
+  }>;
+};
+
+export default async function PostPage({ searchParams }: Props) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,6 +30,17 @@ export default async function PostPage() {
       (user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
 
+  const params = await searchParams;
+  const venue =
+    params.lat && params.lng
+      ? {
+          lat: Number(params.lat),
+          lng: Number(params.lng),
+          name: params.name ?? "",
+          address: params.address ?? "",
+        }
+      : undefined;
+
   return (
     <div className="flex flex-1 flex-col">
       <NavBar user={navUser} />
@@ -34,7 +54,7 @@ export default async function PostPage() {
             It&rsquo;ll show up live for anyone nearby in the next 6 hours.
           </p>
         </header>
-        <PostForm userId={user.id} />
+        <PostForm userId={user.id} venue={venue} />
       </main>
     </div>
   );
