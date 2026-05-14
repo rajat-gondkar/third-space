@@ -65,16 +65,6 @@ export default async function Home() {
               {signedIn ? "Open the map →" : "Get started — it's free"}
             </Link>
           </Button>
-          {!signedIn && (
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="w-full border-primary/30 bg-card text-foreground hover:border-primary hover:bg-primary/5 sm:w-auto"
-            >
-              <Link href="/map">Browse the map →</Link>
-            </Button>
-          )}
         </div>
 
         <div
