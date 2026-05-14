@@ -29,6 +29,13 @@ export type Profile = {
   email: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  phone: string | null;
+  age: number | null;
+  gender: string | null;
+  college_email: string | null;
+  college_email_verified: boolean;
+  college_name: string | null;
+  onboarding_complete: boolean;
   created_at: string;
 };
 

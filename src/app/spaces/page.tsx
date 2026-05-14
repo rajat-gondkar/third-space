@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { NavBar } from "@/components/NavBar";
 import { SpacesShell } from "@/components/spaces/SpacesShell";
+import { checkOnboarding } from "@/lib/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 const DEFAULT_CENTER = { lat: 12.9716, lng: 77.5946 };
@@ -13,6 +14,7 @@ export default async function SpacesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login?next=/spaces");
+  if (!(await checkOnboarding(supabase, user.id, user.email ?? undefined))) redirect("/onboarding?next=/spaces");
 
   const navUser = {
     email: user.email ?? "",

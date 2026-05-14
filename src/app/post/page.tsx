@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { NavBar } from "@/components/NavBar";
 import { PostForm } from "@/components/PostForm";
+import { checkOnboarding } from "@/lib/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -19,6 +20,7 @@ export default async function PostPage({ searchParams }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/post");
+  if (!(await checkOnboarding(supabase, user.id, user.email ?? undefined))) redirect("/onboarding?next=/post");
 
   const navUser = {
     email: user.email ?? "",

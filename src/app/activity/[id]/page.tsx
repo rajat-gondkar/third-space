@@ -10,6 +10,7 @@ import { ParticipantsList } from "@/components/ParticipantsList";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import { checkOnboarding } from "@/lib/onboarding";
 import {
   CATEGORY_EMOJI,
   CATEGORY_LABEL,
@@ -27,6 +28,7 @@ export default async function ActivityDetail({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/activity/${id}`);
+  if (!(await checkOnboarding(supabase, user.id, user.email ?? undefined))) redirect(`/onboarding?next=/activity/${id}`);
 
   const { data: activity, error } = await supabase
     .from("activities")

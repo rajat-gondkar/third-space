@@ -8,6 +8,7 @@ import { NavBar } from "@/components/NavBar";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import { checkOnboarding } from "@/lib/onboarding";
 import type {
   Activity,
   ActivityCategory,
@@ -26,6 +27,8 @@ export default async function MapPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/map");
+
+  if (!(await checkOnboarding(supabase, user.id, user.email ?? undefined))) redirect("/onboarding?next=/map");
 
   // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
   const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
