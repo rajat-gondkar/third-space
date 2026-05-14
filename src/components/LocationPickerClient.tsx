@@ -10,6 +10,10 @@ import {
   useMapEvents,
 } from "react-leaflet";
 
+import { LocateControl } from "@/components/LocateControl";
+
+type Coords = { lat: number; lng: number };
+
 const pinIcon = L.divIcon({
   className: "ts-picker-pin",
   html: `<div style="
@@ -27,7 +31,7 @@ const pinIcon = L.divIcon({
 function ClickHandler({
   onChange,
 }: {
-  onChange: (coords: { lat: number; lng: number }) => void;
+  onChange: (coords: Coords) => void;
 }) {
   useMapEvents({
     click(e) {
@@ -37,7 +41,7 @@ function ClickHandler({
   return null;
 }
 
-function FlyTo({ to }: { to: { lat: number; lng: number } | null }) {
+function FlyTo({ to }: { to: Coords | null }) {
   const map = useMap();
   useEffect(() => {
     if (to) map.flyTo([to.lat, to.lng], Math.max(map.getZoom(), 15));
@@ -45,14 +49,59 @@ function FlyTo({ to }: { to: { lat: number; lng: number } | null }) {
   return null;
 }
 
+/** Fly to the user's GPS location on mount if no pin has been dropped yet. */
+function InitialGeolocate({ hasValue }: { hasValue: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (hasValue) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        map.flyTo(
+          [pos.coords.latitude, pos.coords.longitude],
+          15,
+          { animate: true },
+        );
+      },
+      () => {},
+      { timeout: 5000, maximumAge: 60_000 },
+    );
+  }, [hasValue, map]);
+  return null;
+}
+
+/** Notify parent whenever the map center changes (pan, fly, zoom). */
+function MapCenterTracker({
+  onChange,
+}: {
+  onChange?: (c: Coords) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onChange) return;
+    const handler = () => {
+      const c = map.getCenter();
+      onChange({ lat: c.lat, lng: c.lng });
+    };
+    map.on("moveend", handler);
+    handler(); // initial center
+    return () => {
+      map.off("moveend", handler);
+    };
+  }, [map, onChange]);
+  return null;
+}
+
 export default function LocationPickerClient({
   value,
   defaultCenter,
   onChange,
+  onCenterChange,
 }: {
-  value: { lat: number; lng: number } | null;
-  defaultCenter: { lat: number; lng: number };
-  onChange: (coords: { lat: number; lng: number }) => void;
+  value: Coords | null;
+  defaultCenter: Coords;
+  onChange: (coords: Coords) => void;
+  onCenterChange?: (coords: Coords) => void;
 }) {
   const center = value ?? defaultCenter;
   return (
@@ -67,8 +116,11 @@ export default function LocationPickerClient({
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
       />
+      <LocateControl />
       <ClickHandler onChange={onChange} />
       <FlyTo to={value} />
+      <InitialGeolocate hasValue={value !== null} />
+      <MapCenterTracker onChange={onCenterChange} />
       {value && <Marker position={[value.lat, value.lng]} icon={pinIcon} />}
     </MapContainer>
   );

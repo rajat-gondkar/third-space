@@ -13,6 +13,7 @@ export function LocationPicker(props: {
   value: { lat: number; lng: number } | null;
   defaultCenter: { lat: number; lng: number };
   onChange: (coords: { lat: number; lng: number }) => void;
+  onCenterChange?: (coords: { lat: number; lng: number }) => void;
 }) {
   return <LocationPickerClient {...props} />;
 }

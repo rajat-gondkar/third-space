@@ -62,7 +62,12 @@ function toSuggestion(r: NominatimResult): GeocodeSuggestion {
 
 export async function forwardGeocode(
   query: string,
-  options?: { signal?: AbortSignal; countryCodes?: string },
+  options?: {
+    signal?: AbortSignal;
+    countryCodes?: string;
+    lat?: number;
+    lon?: number;
+  },
 ): Promise<GeocodeSuggestion[]> {
   if (!query.trim()) return [];
   const url = new URL(`${NOMINATIM}/search`);
@@ -72,6 +77,10 @@ export async function forwardGeocode(
   url.searchParams.set("limit", "5");
   if (options?.countryCodes) {
     url.searchParams.set("countrycodes", options.countryCodes);
+  }
+  if (options?.lat != null && options?.lon != null) {
+    url.searchParams.set("lat", String(options.lat));
+    url.searchParams.set("lon", String(options.lon));
   }
   const res = await fetch(url.toString(), {
     signal: options?.signal,

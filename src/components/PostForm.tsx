@@ -94,6 +94,13 @@ export function PostForm({ userId, editing, venue }: PostFormProps) {
         ? { lat: venue.lat, lng: venue.lng }
         : null,
   );
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(
+    editing
+      ? { lat: editing.lat, lng: editing.lng }
+      : venue
+        ? { lat: venue.lat, lng: venue.lng }
+        : DEFAULT_CENTER,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
   // When set, a full-screen loader is shown over the form / modal.
@@ -209,7 +216,12 @@ export function PostForm({ userId, editing, venue }: PostFormProps) {
       const controller = new AbortController();
       fwdAbortRef.current = controller;
       setGeocoding(true);
-      forwardGeocode(q, { signal: controller.signal, countryCodes: "in" })
+      forwardGeocode(q, {
+        signal: controller.signal,
+        countryCodes: "in",
+        lat: mapCenter.lat,
+        lon: mapCenter.lng,
+      })
         .then((results) => {
           if (controller.signal.aborted) return;
           setSuggestions(results);
@@ -495,9 +507,14 @@ export function PostForm({ userId, editing, venue }: PostFormProps) {
           <LocationPicker
             value={coords}
             defaultCenter={
-              venue ? { lat: venue.lat, lng: venue.lng } : DEFAULT_CENTER
+              editing
+                ? { lat: editing.lat, lng: editing.lng }
+                : venue
+                  ? { lat: venue.lat, lng: venue.lng }
+                  : DEFAULT_CENTER
             }
             onChange={handleCoordsFromMap}
+            onCenterChange={setMapCenter}
           />
         </div>
         {coords ? (

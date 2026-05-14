@@ -48,10 +48,11 @@ src/
     ui/                         # shadcn/ui primitives (button, input, sonner, etc.)
     OnboardingFlow.tsx          # Multi-step onboarding form (college email → OTP → profile)
     Map.tsx                     # Leaflet map wrapper (dynamic import, SSR disabled)
-    MapClient.tsx               # Actual Leaflet map + markers + LocateControl
+    MapClient.tsx               # Actual Leaflet map + markers + LocateControl + RadiusZoom
+    MapShell.tsx                # Client shell for /map: category/radius filters + center state + ActivityList
     LocateControl.tsx           # "Go to my location" button on maps (Leaflet control)
     LocationPicker.tsx          # Map for dropping a pin during posting
-    LocationPickerClient.tsx    # Leaflet tap-to-pin logic
+    LocationPickerClient.tsx    # Leaflet tap-to-pin + LocateControl + initial geolocation + center tracking
     PostForm.tsx                # Activity creation form (react-hook-form + zod), accepts venue prop
     ActivityCard.tsx            # Single activity row in the sidebar list
     ActivityList.tsx            # Sidebar list with filters + deduping
@@ -90,7 +91,7 @@ src/
     email.ts                    # sendOtpEmail() via Resend (dev mode fallback)
     types.ts                    # TypeScript types (Activity, Profile, Venue, JoinResult, etc.)
     utils.ts                    # cn() helper for Tailwind class merging
-    geocoding.ts                # OpenStreetMap Nominatim wrapper
+    geocoding.ts                # OpenStreetMap Nominatim wrapper (forward/reverse, optional lat/lon bias)
     venues/
       types.ts                  # Venue, VenueDetail, VenueWithDistance, VenueTag types
       client.ts                 # Browser fetch helpers for /api/venues/*
