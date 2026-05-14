@@ -12,6 +12,7 @@ type NearbyVenuesParams = {
   radius?: number;
   category?: VenueCategorySlug | null;
   sort?: VenueSortMode;
+  all?: boolean;
 };
 
 type NearbyVenuesResponse = {
@@ -25,6 +26,7 @@ export async function fetchNearbyVenues({
   radius = 2000,
   category,
   sort = "nearest",
+  all = false,
 }: NearbyVenuesParams) {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -34,6 +36,7 @@ export async function fetchNearbyVenues({
   });
 
   if (category) params.set("category", category);
+  if (all) params.set("all", "true");
 
   const response = await fetch(`/api/venues/nearby?${params.toString()}`);
   const payload = (await response.json()) as NearbyVenuesResponse;

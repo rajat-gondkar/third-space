@@ -64,11 +64,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lat = parseNumber(searchParams.get("lat"), 12.9716);
   const lng = parseNumber(searchParams.get("lng"), 77.5946);
-  const radius = Math.min(
-    Math.max(parseNumber(searchParams.get("radius"), 2000), 100),
-    10000,
-  );
-  const category = parseCategory(searchParams.get("category"));
+  const all = searchParams.get("all") === "true";
+  const radius = all
+    ? 50000000
+    : Math.min(
+        Math.max(parseNumber(searchParams.get("radius"), 2000), 100),
+        10000,
+      );
+  const category = all ? null : parseCategory(searchParams.get("category"));
   const sort = parseSort(searchParams.get("sort"));
 
   if (category === "invalid") {
@@ -96,6 +99,8 @@ export async function GET(request: Request) {
         ? "ORDER BY v.popularity_score DESC NULLS LAST, distance_metres ASC"
         : "ORDER BY distance_metres ASC";
 
+    const limit = all ? 2000 : 40;
+
     const result = await pool.query<VenueRow>(
       `SELECT
         v.id,
@@ -122,7 +127,7 @@ export async function GET(request: Request) {
       )
       ${categoryClause}
       ${orderClause}
-      LIMIT 40`,
+      LIMIT ${limit}`,
       values,
     );
 

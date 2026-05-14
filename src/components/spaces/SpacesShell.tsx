@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { SpacesFiltersBar } from "@/components/spaces/SpacesFiltersBar";
 import { SpacesList } from "@/components/spaces/SpacesList";
@@ -21,7 +21,7 @@ type Props = {
 
 export function SpacesShell({ defaultCenter }: Props) {
   const [center, setCenter] = useState(defaultCenter);
-  const [venues, setVenues] = useState<VenueWithDistance[]>([]);
+  const [allVenues, setAllVenues] = useState<VenueWithDistance[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [category, setCategory] = useState<VenueCategorySlug | null>(null);
@@ -53,25 +53,26 @@ export function SpacesShell({ defaultCenter }: Props) {
       setError(null);
 
       try {
-        const nearby = await fetchNearbyVenues({
+        // Fetch all venues for the map (unbounded)
+        const all = await fetchNearbyVenues({
           lat: center.lat,
           lng: center.lng,
-          radius,
-          category,
           sort,
+          all: true,
         });
 
         if (!cancelled) {
-          setVenues(nearby);
+          setAllVenues(all);
+          // Keep selected venue if it still exists in the new set
           setSelectedVenueId((current) =>
-            current && nearby.some((venue) => venue.id === current)
+            current && all.some((venue) => venue.id === current)
               ? current
-              : nearby[0]?.id ?? null,
+              : all[0]?.id ?? null,
           );
         }
       } catch (loadError) {
         if (!cancelled) {
-          setVenues([]);
+          setAllVenues([]);
           setSelectedVenueId(null);
           setError(
             loadError instanceof Error
@@ -89,10 +90,20 @@ export function SpacesShell({ defaultCenter }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [category, center.lat, center.lng, radius, sort]);
+  }, [center.lat, center.lng, sort]);
+
+  // Client-side filter the list by category and radius
+  const listVenues = useMemo(() => {
+    let out = allVenues;
+    if (category) {
+      out = out.filter((v) => v.category.slug === category);
+    }
+    out = out.filter((v) => v.distanceMetres <= radius);
+    return out;
+  }, [allVenues, category, radius]);
 
   const selectedVenue =
-    venues.find((venue) => venue.id === selectedVenueId) ?? null;
+    allVenues.find((venue) => venue.id === selectedVenueId) ?? null;
 
   function selectVenue(venueId: number) {
     setSelectedVenueId(venueId);
@@ -105,7 +116,7 @@ export function SpacesShell({ defaultCenter }: Props) {
         <SpacesMap
           center={center}
           radius={radius}
-          venues={venues}
+          venues={allVenues}
           selectedVenueId={selectedVenueId}
           onSelectVenue={selectVenue}
         />
@@ -143,7 +154,7 @@ export function SpacesShell({ defaultCenter }: Props) {
         </div>
 
         <SpacesList
-          venues={venues}
+          venues={listVenues}
           loading={loading}
           selectedVenueId={selectedVenueId}
           onSelectVenue={selectVenue}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, ChevronDown, CalendarDays, MapPin } from "lucide-react";
 
 import { ActivityList } from "@/components/ActivityList";
 import { Map } from "@/components/Map";
@@ -30,12 +30,24 @@ function haversineMeters(a: Coords, b: Coords): number {
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function withinDay(t: number, day: Date) {
+  const start = startOfDay(day).getTime();
+  const end = start + 24 * 60 * 60 * 1000;
+  return t >= start && t < end;
+}
+
 const categoryItems: Array<{
   value: ActivityCategory | null;
   label: string;
   emoji: string;
 }> = [
-  { value: null, label: "All", emoji: "✨" },
+  { value: null, label: "All Activities", emoji: "✨" },
   ...ACTIVITY_CATEGORIES.map((c) => ({
     value: c,
     label: CATEGORY_LABEL[c],
@@ -44,11 +56,16 @@ const categoryItems: Array<{
 ];
 
 const radii = [
-  { value: 500, label: "500 m" },
-  { value: 1000, label: "1 km" },
-  { value: 2000, label: "2 km" },
-  { value: 5000, label: "5 km" },
+  { value: 500, label: "500m" },
+  { value: 1000, label: "1km" },
+  { value: 2000, label: "2km" },
+  { value: 5000, label: "5km" },
 ];
+
+function formatDateShort(d: Date) {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
 
 type Props = {
   activities: ActivityWithCount[];
@@ -58,9 +75,15 @@ type Props = {
 
 export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
   const [center, setCenter] = useState<Coords>(defaultCenter);
-  const [radius, setRadius] = useState(5000);
+  const [radius, setRadius] = useState(500);
   const [category, setCategory] = useState<ActivityCategory | null>(null);
+  const [dateMode, setDateMode] = useState<"today" | "date">("today");
+  const [customDate, setCustomDate] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
+  // Geolocation
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -75,6 +98,18 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
     );
   }, []);
 
+  // Close category dropdown on outside click
+  useEffect(() => {
+    if (!categoryOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (!categoryRef.current?.contains(e.target as Node)) {
+        setCategoryOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [categoryOpen]);
+
   const filteredActivities = useMemo(() => {
     let out = activities;
     if (category) {
@@ -83,13 +118,46 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
     out = out.filter(
       (a) => haversineMeters(center, { lat: a.lat, lng: a.lng }) <= radius,
     );
+    out = out.filter((a) => {
+      const t = new Date(a.start_time).getTime();
+      if (dateMode === "today") {
+        return withinDay(t, new Date());
+      }
+      if (dateMode === "date" && customDate) {
+        return withinDay(t, new Date(`${customDate}T00:00:00`));
+      }
+      return true;
+    });
     return out;
-  }, [activities, category, center, radius]);
+  }, [activities, category, center, radius, dateMode, customDate]);
+
+  const filterActive = category !== null || dateMode === "date";
+
+  // Radius cycling
+  function cycleRadius() {
+    const idx = radii.findIndex((r) => r.value === radius);
+    const next = radii[(idx + 1) % radii.length];
+    setRadius(next.value);
+  }
+
+  // Category button label
+  const activeCategory = categoryItems.find((c) => c.value === category);
+  const categoryLabel = activeCategory
+    ? `${activeCategory.emoji} ${activeCategory.label}`
+    : "✨ All";
+
+  // Date button label
+  let dateLabel = "Today";
+  if (dateMode === "date" && customDate) {
+    dateLabel = formatDateShort(new Date(`${customDate}T00:00:00`));
+  }
+
+  const activeRadius = radii.find((r) => r.value === radius)!;
 
   return (
     <div className="flex flex-1 flex-col md:grid md:grid-cols-[1fr_440px] md:overflow-hidden">
       <div className="relative h-[55vh] w-full shrink-0 md:h-full md:overflow-hidden">
-        <Map center={center} activities={filteredActivities} radius={radius} />
+        <Map center={center} activities={activities} radius={radius} />
       </div>
 
       <aside className="flex flex-col border-t border-border bg-background p-4 pb-24 md:min-h-0 md:overflow-hidden md:border-l md:border-t-0 md:pb-4">
@@ -99,7 +167,7 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
               Happening now
             </h2>
             <p className="text-xs text-muted-foreground">
-              Pin up to 2 &middot; filter by today, date, or area
+              Pin up to 2 &middot; tap to join
             </p>
           </div>
           <Button
@@ -120,51 +188,112 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
           </p>
         )}
 
-        {/* Category pills */}
-        <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
-          {categoryItems.map((item) => {
-            const active = item.value === category;
-            return (
-              <button
-                key={item.value ?? "all"}
-                type="button"
-                onClick={() => setCategory(item.value)}
+        {/* Single-row filter bar */}
+        <div className="mb-3 flex items-center gap-2">
+          {/* Category dropdown */}
+          <div ref={categoryRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setCategoryOpen((v) => !v)}
+              className={cn(
+                "flex h-9 w-[120px] items-center justify-between rounded-full border px-3 text-xs font-medium shadow-sm transition-colors md:w-[128px]",
+                category
+                  ? "border-transparent bg-primary text-primary-foreground"
+                  : "border-border bg-card hover:border-primary/40 hover:bg-accent/60",
+              )}
+            >
+              <span className="truncate">{categoryLabel}</span>
+              <ChevronDown
                 className={cn(
-                  "h-8 shrink-0 rounded-full border px-3 text-xs font-medium shadow-sm transition-colors",
-                  active
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:border-primary/40 hover:bg-accent/60",
+                  "ml-1 size-3 shrink-0 transition-transform",
+                  categoryOpen && "rotate-180",
                 )}
-              >
-                {item.emoji} {item.label}
-              </button>
-            );
-          })}
+              />
+            </button>
+
+            {categoryOpen && (
+              <div className="absolute left-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg">
+                {categoryItems.map((item) => (
+                  <button
+                    key={item.value ?? "all"}
+                    type="button"
+                    onClick={() => {
+                      setCategory(item.value);
+                      setCategoryOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-colors",
+                      item.value === category
+                        ? "bg-primary/10 font-semibold text-primary"
+                        : "hover:bg-accent/60",
+                    )}
+                  >
+                    <span className="text-sm">{item.emoji}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Radius cycle button */}
+          <button
+            type="button"
+            onClick={cycleRadius}
+            className={cn(
+              "flex h-9 w-[120px] items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold shadow-sm transition-colors md:w-[128px]",
+              "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/60",
+            )}
+          >
+            <MapPin className="size-3 shrink-0" />
+            <span>{activeRadius.label}</span>
+          </button>
+
+          {/* Date picker button */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => dateInputRef.current?.showPicker?.()}
+              className={cn(
+                "flex h-9 w-[120px] items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold shadow-sm transition-colors md:w-[128px]",
+                dateMode === "date" && customDate
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/60",
+              )}
+            >
+              <CalendarDays className="size-3 shrink-0" />
+              <span className="truncate">{dateLabel}</span>
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              className="pointer-events-none absolute inset-0 opacity-0"
+              value={customDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  setDateMode("today");
+                  setCustomDate("");
+                  return;
+                }
+                const picked = new Date(`${val}T00:00:00`);
+                const today = startOfDay(new Date());
+                if (picked.getTime() === today.getTime()) {
+                  setDateMode("today");
+                  setCustomDate("");
+                } else {
+                  setDateMode("date");
+                  setCustomDate(val);
+                }
+              }}
+            />
+          </div>
         </div>
 
-        {/* Radius grid */}
-        <div className="mb-3 grid grid-cols-4 rounded-full border border-border bg-card p-1 shadow-sm">
-          {radii.map((item) => {
-            const active = item.value === radius;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setRadius(item.value)}
-                className={cn(
-                  "h-7 rounded-full text-[11px] font-semibold transition-colors",
-                  active
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <ActivityList activities={filteredActivities} />
+        <ActivityList
+          activities={filteredActivities}
+          filterActive={filterActive}
+        />
       </aside>
     </div>
   );

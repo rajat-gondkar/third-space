@@ -49,14 +49,14 @@ src/
     OnboardingFlow.tsx          # Multi-step onboarding form (college email → OTP → profile)
     Map.tsx                     # Leaflet map wrapper (dynamic import, SSR disabled)
     MapClient.tsx               # Actual Leaflet map + markers + LocateControl + RadiusZoom
-    MapShell.tsx                # Client shell for /map: category/radius filters + center state + ActivityList
+    MapShell.tsx                # Client shell for /map: single-row filter bar (category dropdown + radius cycle + date picker) + center state + ActivityList
     LocateControl.tsx           # "Go to my location" button on maps (Leaflet control)
     LocationPicker.tsx          # Map for dropping a pin during posting
     LocationPickerClient.tsx    # Leaflet tap-to-pin + LocateControl + initial geolocation + center tracking
     PostForm.tsx                # Activity creation form (react-hook-form + zod), accepts venue prop
     ActivityCard.tsx            # Single activity row in the sidebar list
     ActivityList.tsx            # Sidebar list with filters + deduping
-    FiltersBar.tsx              # Date / location filter controls
+    FiltersBar.tsx              # Legacy date / location filter controls (replaced by MapShell inline bar)
     PinButton.tsx               # Pin up to 2 activities to top of list
     JoinButton.tsx              # Join activity button (calls join_activity RPC)
     JoinModal.tsx               # Modal asking for display name before joining

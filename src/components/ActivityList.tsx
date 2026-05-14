@@ -1,44 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
 
 import { ActivityCard } from "@/components/ActivityCard";
-import {
-  EMPTY_FILTERS,
-  FiltersBar,
-  isFilterActive,
-  type Filters,
-} from "@/components/FiltersBar";
 import { Button } from "@/components/ui/button";
 import { usePinnedActivities } from "@/hooks/usePinnedActivities";
 import type { ActivityWithCount } from "@/lib/types";
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function withinDay(t: number, day: Date) {
-  const start = startOfDay(day).getTime();
-  const end = start + 24 * 60 * 60 * 1000;
-  return t >= start && t < end;
-}
-
 export function ActivityList({
   activities,
+  filterActive = false,
 }: {
   activities: ActivityWithCount[];
+  filterActive?: boolean;
 }) {
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const { isPinned, togglePin } = usePinnedActivities();
 
   // Dedupe by activity id — guards against duplicate rows from any source
-  // (race-y double inserts, stale Realtime payloads, etc.). React would warn
-  // on duplicate keys but would still render both; we want strictly one card
-  // per activity id at all times.
   const uniqueActivities = useMemo(() => {
     const seen = new Set<string>();
     const out: ActivityWithCount[] = [];
@@ -50,37 +30,17 @@ export function ActivityList({
     return out;
   }, [activities]);
 
-  const filtered = useMemo(() => {
-    const q = filters.location.trim().toLowerCase();
-    return uniqueActivities.filter((a) => {
-      if (q) {
-        const hay = `${a.location_name ?? ""} ${a.title}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      const t = new Date(a.start_time).getTime();
-      if (filters.mode === "today") {
-        if (!withinDay(t, new Date())) return false;
-      } else if (filters.mode === "date" && filters.date) {
-        if (!withinDay(t, new Date(`${filters.date}T00:00:00`))) return false;
-      }
-      return true;
-    });
-  }, [uniqueActivities, filters]);
-
   const pinnedActivities = useMemo(
     () => uniqueActivities.filter((a) => isPinned(a.id)),
     [uniqueActivities, isPinned],
   );
   const pinnedIds = new Set(pinnedActivities.map((a) => a.id));
-  const remaining = filtered.filter((a) => !pinnedIds.has(a.id));
+  const remaining = uniqueActivities.filter((a) => !pinnedIds.has(a.id));
 
   const showEmpty = pinnedActivities.length === 0 && remaining.length === 0;
-  const filterActive = isFilterActive(filters);
 
   return (
     <div className="flex flex-col gap-3 md:h-full md:overflow-hidden">
-      <FiltersBar filters={filters} onChange={setFilters} />
-
       <div className="space-y-4 md:flex-1 md:overflow-y-auto md:pr-1">
         {pinnedActivities.length > 0 && (
           <section className="space-y-2">
