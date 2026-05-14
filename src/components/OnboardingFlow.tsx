@@ -22,6 +22,11 @@ type OnboardingFlowProps = {
   initialAvatarUrl: string | null;
 };
 
+function isValidPhone(phone: string): boolean {
+  const cleaned = phone.replace(/\s+/g, "");
+  return /^(\+91)?[6-9]\d{9}$/.test(cleaned);
+}
+
 export function OnboardingFlow({
   userEmail,
   isCollegeEmail: isCollegeEmailProp,
@@ -156,8 +161,30 @@ export function OnboardingFlow({
   }
 
   async function handleProfileSubmit() {
-    if (!displayName.trim()) {
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
       toast.error("Name is required.");
+      return;
+    }
+
+    const ageNum = age ? Number(age) : null;
+    if (!ageNum || ageNum < 13 || ageNum > 120) {
+      toast.error("Please enter a valid age (13–120).");
+      return;
+    }
+
+    if (!gender) {
+      toast.error("Please select your gender.");
+      return;
+    }
+
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) {
+      toast.error("Phone number is required.");
+      return;
+    }
+    if (!isValidPhone(trimmedPhone)) {
+      toast.error("Please enter a valid Indian phone number (10 digits, starting with 6–9).");
       return;
     }
 
@@ -167,10 +194,10 @@ export function OnboardingFlow({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          display_name: displayName.trim(),
-          age: age ? Number(age) : null,
-          gender: gender || null,
-          phone: phone.trim() || null,
+          display_name: trimmedName,
+          age: ageNum,
+          gender,
+          phone: trimmedPhone,
           avatar_url: avatarUrl,
         }),
       });
@@ -349,7 +376,7 @@ export function OnboardingFlow({
           {/* Age + Gender row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="age">Age</Label>
+              <Label htmlFor="age">Age *</Label>
               <Input
                 id="age"
                 type="number"
@@ -361,14 +388,14 @@ export function OnboardingFlow({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="gender">Gender</Label>
+              <Label htmlFor="gender">Gender *</Label>
               <select
                 id="gender"
                 className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
               >
-                <option value="">Prefer not to say</option>
+                <option value="">Select gender</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="non-binary">Non-binary</option>
@@ -379,14 +406,17 @@ export function OnboardingFlow({
 
           {/* Phone */}
           <div className="space-y-1.5">
-            <Label htmlFor="phone">Phone number</Label>
+            <Label htmlFor="phone">Phone number *</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="+91 98765 43210"
+              placeholder="9876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              10-digit Indian mobile number (starts with 6–9).
+            </p>
           </div>
 
           <Button

@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+function isValidPhone(phone: string): boolean {
+  const cleaned = phone.replace(/\s+/g, "");
+  return /^(\+91)?[6-9]\d{9}$/.test(cleaned);
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -33,13 +38,42 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!age || typeof age !== "number" || age < 13 || age > 120) {
+    return NextResponse.json(
+      { error: "Please enter a valid age (13–120)." },
+      { status: 400 },
+    );
+  }
+
+  if (!gender || gender.trim().length < 1) {
+    return NextResponse.json(
+      { error: "Gender is required." },
+      { status: 400 },
+    );
+  }
+
+  const trimmedPhone = phone?.trim() ?? "";
+  if (!trimmedPhone) {
+    return NextResponse.json(
+      { error: "Phone number is required." },
+      { status: 400 },
+    );
+  }
+
+  if (!isValidPhone(trimmedPhone)) {
+    return NextResponse.json(
+      { error: "Please enter a valid Indian phone number (10 digits, starting with 6–9)." },
+      { status: 400 },
+    );
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update({
       display_name: display_name.trim(),
-      age: age ?? null,
-      gender: gender ?? null,
-      phone: phone?.trim() || null,
+      age,
+      gender: gender.trim(),
+      phone: trimmedPhone,
       avatar_url: avatar_url ?? null,
       onboarding_complete: true,
     })

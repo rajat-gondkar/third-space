@@ -62,7 +62,8 @@ src/
     JoinModal.tsx               # Modal asking for display name before joining
     DeleteActivityButton.tsx    # Host-only delete with confirm dialog
     ConfirmDialog.tsx           # Reusable destructive action confirm
-    ParticipantsList.tsx        # Accordion of joined users
+    ParticipantsList.tsx        # Accordion of joined users (clickable → ProfileViewer)
+    ProfileViewer.tsx           # Modal showing participant profile. Self = full data + leave button; others = masked phone/email
     ProfileMenu.tsx             # Avatar dropdown with sign out
     NavBar.tsx                  # Top bar with logo, live count, profile menu
     Logo.tsx                    # Brand mark

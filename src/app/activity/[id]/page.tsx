@@ -39,13 +39,10 @@ export default async function ActivityDetail({ params }: Props) {
   if (error || !activity) notFound();
 
   // Pull the participants together with their profile in one PostgREST query
-  // (FK-implicit join via `participants_user_id_fkey` → `profiles`). Caps the
-  // list to keep the accordion lightweight; total count drives the `(N more)`
-  // indicator.
   const { data: participants, count: participantCount } = await supabase
     .from("participants")
     .select(
-      "user_id, display_name, joined_at, profile:profiles!participants_user_id_fkey(email, display_name, avatar_url)",
+      "user_id, display_name, joined_at, profile:profiles!participants_user_id_fkey(email, display_name, avatar_url, age, gender, phone)",
       { count: "exact" },
     )
     .eq("activity_id", id)
@@ -64,14 +61,27 @@ export default async function ActivityDetail({ params }: Props) {
     user_id: string;
     display_name: string | null;
     profile:
-      | { email: string | null; display_name: string | null }
-      | { email: string | null; display_name: string | null }[]
+      | {
+          email: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          age: number | null;
+          gender: string | null;
+          phone: string | null;
+        }
+      | {
+          email: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          age: number | null;
+          gender: string | null;
+          phone: string | null;
+        }[]
       | null;
   };
   const rows = (participants ?? []) as ParticipantRow[];
 
   const people = rows.map((p) => {
-    // Supabase typings sometimes infer the embedded row as an array; normalise.
     const profile = Array.isArray(p.profile) ? p.profile[0] : p.profile;
     return {
       userId: p.user_id,
@@ -80,6 +90,10 @@ export default async function ActivityDetail({ params }: Props) {
         profile?.display_name?.trim() ||
         "Someone",
       email: profile?.email ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
+      age: profile?.age ?? null,
+      gender: profile?.gender ?? null,
+      phone: profile?.phone ?? null,
       isHost: p.user_id === activity.host_id,
     };
   });
@@ -164,7 +178,12 @@ export default async function ActivityDetail({ params }: Props) {
           )}
 
           <div className="pt-2">
-            <ParticipantsList people={people} total={total} />
+            <ParticipantsList
+              people={people}
+              total={total}
+              activityId={activity.id}
+              currentUserId={user.id}
+            />
           </div>
         </div>
 
