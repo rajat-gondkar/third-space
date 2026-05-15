@@ -73,13 +73,14 @@ src/
     BlockingLoader.tsx           # Full-screen spinner during submit
     RealtimeRefresh.tsx          # WebSocket subscription + polling fallback
     spaces/
-      SpacesShell.tsx           # Main spaces page shell (map + list + sheet)
-      SpacesMap.tsx             # Leaflet map wrapper for venues
-      SpacesMapClient.tsx        # Venue map + markers + LocateControl
-      SpaceCard.tsx              # Single venue card in list
-      SpacesList.tsx             # Venue list with sorting
-      SpacesFiltersBar.tsx       # Category + radius filters
-      VenueSheet.tsx             # Bottom sheet with venue details, vibe tags, "Start an event here" button
+    SpacesShell.tsx           # Main spaces page shell (map + list + sheet)
+    SpacesMap.tsx             # Leaflet map wrapper for venues
+    SpacesMapClient.tsx        # Venue map + markers + LocateControl
+    SpaceCard.tsx              # Single venue card in list (shows star rating + count)
+    SpacesList.tsx             # Venue list with sorting
+    SpacesFiltersBar.tsx       # Category + radius filters
+    VenueSheet.tsx             # Bottom sheet with venue details, star rating, rate button, vibe tags, "Start an event here" button
+    StarRating.tsx             # Reusable star rating display + interactive selector + RatingModal
   hooks/
     usePinnedActivities.ts      # localStorage hook for pinned activities
   lib/
@@ -111,6 +112,7 @@ supabase/migrations/
   0003_onboarding_profiles.sql  # Adds onboarding columns, OTP table, avatars bucket
   0004_link_accounts.sql        # ON UPDATE CASCADE on profile FKs + unique verified college_email index + trigger merge for seamless login (superseded by 0005)
   0005_bidirectional_linking.sql # linked_user_id column + resolve_canonical_id() function + normalised triggers + updated RLS for bidirectional account linking
+  0006_venue_ratings.sql         # venue_ratings table, avg_rating/rating_count columns, auto-recalc trigger, backfill
 db/venues/
   schema.sql                    # PostGIS schema: categories, venues, venue_tags
   seed.ts                       # Seeds OSM venues for a city
@@ -148,6 +150,7 @@ vercel.json                     # Daily cron for venue score refresh
 | `api/venues/nearby/route.ts` | `GET` returns venues near a lat/lng with optional filters. |
 | `api/venues/[id]/route.ts` | `GET` returns venue detail + nearby activities. |
 | `api/venues/[id]/tags/route.ts` | `POST` upvotes a vibe tag on a venue. |
+| `api/venues/[id]/rate/route.ts` | `POST` submits or updates a 1–5 star rating for a venue. Auto-recalculates avg_rating via DB trigger. |
 | `api/venues/refresh-scores/route.ts` | `POST` recalculates popularity scores for all venues. |
 
 ### Components

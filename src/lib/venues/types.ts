@@ -24,6 +24,8 @@ export type Venue = {
   lng: number;
   address: string | null;
   popularityScore: number;
+  avgRating: number;
+  ratingCount: number;
 };
 
 export type VenueWithDistance = Venue & {
@@ -50,4 +52,12 @@ export type VenueDetail = VenueWithDistance & {
   osmTags: Record<string, string>;
   tags: VenueTag[];
   activities: ActiveActivityAtVenue[];
+};
+
+export type VenueRating = {
+  id: number;
+  venueId: number;
+  userId: string;
+  rating: number;
+  createdAt: string;
 };

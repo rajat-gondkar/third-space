@@ -13,6 +13,8 @@ type VenueScoreRow = {
   lng: string | number;
   osm_tags: Record<string, string> | null;
   tag_vote_count: string | number | null;
+  avg_rating: string | number | null;
+  rating_count: string | number | null;
 };
 
 export type ScoreRefreshResult = {
@@ -56,18 +58,28 @@ export function tagEngagementScore(votes: number) {
   return Math.min(votes / 20, 1);
 }
 
+export function ratingScore(avgRating: number, ratingCount: number) {
+  if (ratingCount === 0) return 0;
+  // Weighted so venues with few ratings don't get max score.
+  // A perfect 5.0 with 10+ ratings = ~1.0.  
+  const confidence = Math.min(ratingCount / 10, 1);
+  return (avgRating / 5) * confidence;
+}
+
 export function combinedPopularityScore({
   osmQuality,
   activityDensity,
   tagEngagement,
+  rating,
 }: {
   osmQuality: number;
   activityDensity: number;
   tagEngagement: number;
+  rating: number;
 }) {
   return Number(
     (
-      (osmQuality * 0.3 + activityDensity * 0.4 + tagEngagement * 0.3) *
+      (osmQuality * 0.25 + activityDensity * 0.35 + tagEngagement * 0.25 + rating * 0.15) *
       10
     ).toFixed(2),
   );
@@ -100,7 +112,9 @@ export async function refreshVenueScores({
         v.osm_tags,
         ST_Y(v.location::geometry) AS lat,
         ST_X(v.location::geometry) AS lng,
-        COALESCE(SUM(vt.count), 0) AS tag_vote_count
+        COALESCE(SUM(vt.count), 0) AS tag_vote_count,
+        v.avg_rating,
+        v.rating_count
       FROM venues v
       LEFT JOIN venue_tags vt ON vt.venue_id = v.id
       GROUP BY v.id`,
@@ -124,6 +138,10 @@ export async function refreshVenueScores({
       osmQuality: osmQualityScore(venue.osm_tags ?? {}),
       activityDensity: activityDensityScore(nearbyActivityCount),
       tagEngagement: tagEngagementScore(Number(venue.tag_vote_count ?? 0)),
+      rating: ratingScore(
+        Number(venue.avg_rating ?? 0),
+        Number(venue.rating_count ?? 0),
+      ),
     });
 
     await pool.query(

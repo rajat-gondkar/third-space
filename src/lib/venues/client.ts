@@ -1,6 +1,7 @@
 import type {
   VenueCategorySlug,
   VenueDetail,
+  VenueRating,
   VenueSortMode,
   VenueTag,
   VenueWithDistance,
@@ -100,4 +101,32 @@ export async function upvoteVenueTag({
   }
 
   return payload.tag;
+}
+
+type RateResponse = {
+  rating: VenueRating;
+  avgRating: number;
+  ratingCount: number;
+  error?: string;
+};
+
+export async function rateVenue({
+  venueId,
+  rating,
+}: {
+  venueId: number;
+  rating: number;
+}): Promise<RateResponse> {
+  const response = await fetch(`/api/venues/${venueId}/rate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ rating }),
+  });
+  const payload = (await response.json()) as RateResponse;
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not submit rating.");
+  }
+
+  return payload;
 }

@@ -17,6 +17,8 @@ type VenueRow = {
   address: string | null;
   osm_tags: Record<string, string> | null;
   popularity_score: string | number | null;
+  avg_rating: string | number | null;
+  rating_count: string | number | null;
   lat: string | number;
   lng: string | number;
   distance_metres: string | number;
@@ -91,6 +93,8 @@ function toVenue(
     lng: Number(row.lng),
     address: row.address,
     popularityScore: Number(row.popularity_score ?? 0),
+    avgRating: Number(row.avg_rating ?? 0),
+    ratingCount: Number(row.rating_count ?? 0),
     distanceMetres: Math.round(Number(row.distance_metres)),
     osmTags: row.osm_tags ?? {},
     tags,
@@ -124,6 +128,8 @@ export async function GET(
         v.address,
         v.osm_tags,
         v.popularity_score,
+        v.avg_rating,
+        v.rating_count,
         ST_Y(v.location::geometry) AS lat,
         ST_X(v.location::geometry) AS lng,
         ST_Distance(

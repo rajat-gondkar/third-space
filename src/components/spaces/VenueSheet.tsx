@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, ExternalLink, MapPin, X } from "lucide-react";
+import { CalendarPlus, ExternalLink, MapPin, Star, X } from "lucide-react";
 
-import { fetchVenueDetail, upvoteVenueTag } from "@/lib/venues/client";
+import { fetchVenueDetail, upvoteVenueTag, rateVenue } from "@/lib/venues/client";
 import type {
   VenueCategorySlug,
   VenueDetail,
   VenueTag,
   VenueWithDistance,
 } from "@/lib/venues/types";
+import { StarRating, RatingModal } from "@/components/StarRating";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_TAGS: Record<VenueCategorySlug, string[]> = {
@@ -69,6 +70,7 @@ export function VenueSheet({
     message: string;
   } | null>(null);
   const [dragStart, setDragStart] = useState<number | null>(null);
+  const [ratingOpen, setRatingOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !venue) return;
@@ -143,6 +145,22 @@ export function VenueSheet({
     });
   }
 
+  async function handleRate(rating: number) {
+    if (!venue) return;
+    const result = await rateVenue({ venueId: venue.id, rating });
+    const avgRating = Number(result.avgRating);
+    const ratingCount = Number(result.ratingCount);
+    setDetail((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        avgRating,
+        ratingCount,
+        popularityScore: recalcPopularity(current, avgRating, ratingCount),
+      };
+    });
+  }
+
   const url = currentDetail ? osmUrl(currentDetail) : null;
 
   return (
@@ -200,7 +218,33 @@ export function VenueSheet({
             </button>
           </div>
 
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+          {/* Rating row */}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <StarRating
+                value={Number(activeVenue.avgRating)}
+                size="sm"
+                interactive={false}
+              />
+              <span className="text-sm font-medium">
+                {Number(activeVenue.avgRating).toFixed(1)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({Number(activeVenue.ratingCount)})
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRatingOpen(true)}
+              className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-accent/60"
+            >
+              <Star className="size-3.5" />
+              Rate
+            </button>
+          </div>
+
+          {/* Popularity bar */}
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500"
               style={{
@@ -305,6 +349,46 @@ export function VenueSheet({
           )}
         </div>
       </section>
+
+      <RatingModal
+        venueName={activeVenue.name}
+        currentRating={0}
+        open={ratingOpen}
+        onClose={() => setRatingOpen(false)}
+        onRate={handleRate}
+      />
     </div>
   );
+}
+
+function recalcPopularity(
+  venue: VenueDetail,
+  avgRating: number,
+  ratingCount: number,
+): number {
+  const osmQuality = osmQualityScore(venue.osmTags);
+  const activityDensity = Math.min(venue.activities.length / 5, 1);
+  const tagEngagement = Math.min(
+    venue.tags.reduce((sum, t) => sum + t.count, 0) / 20,
+    1,
+  );
+  const rating =
+    ratingCount === 0 ? 0 : (avgRating / 5) * Math.min(ratingCount / 10, 1);
+  return Number(
+    (
+      (osmQuality * 0.25 + activityDensity * 0.35 + tagEngagement * 0.25 + rating * 0.15) *
+      10
+    ).toFixed(2),
+  );
+}
+
+function osmQualityScore(tags: Record<string, string>) {
+  let points = 0;
+  if (tags.opening_hours) points += 1;
+  if (tags.phone || tags["contact:phone"] || tags.website || tags["contact:website"]) {
+    points += 1;
+  }
+  if (tags.wheelchair === "yes") points += 0.5;
+  if (Object.keys(tags).length > 3) points += 1;
+  return Math.min(points / 3.5, 1);
 }
