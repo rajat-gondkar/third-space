@@ -81,6 +81,7 @@ src/
     SpacesFiltersBar.tsx       # Category + radius filters
     VenueSheet.tsx             # Bottom sheet with venue details, star rating, rate button, vibe tags, "Start an event here" button
     StarRating.tsx             # Reusable star rating display + interactive selector + RatingModal
+    AddVenueModal.tsx          # Modal to suggest a new space (name, category, tags, location picker)
   hooks/
     usePinnedActivities.ts      # localStorage hook for pinned activities
   lib/
@@ -113,6 +114,7 @@ supabase/migrations/
   0004_link_accounts.sql        # ON UPDATE CASCADE on profile FKs + unique verified college_email index + trigger merge for seamless login (superseded by 0005)
   0005_bidirectional_linking.sql # linked_user_id column + resolve_canonical_id() function + normalised triggers + updated RLS for bidirectional account linking
   0006_venue_ratings.sql         # venue_ratings table, avg_rating/rating_count columns, auto-recalc trigger, backfill
+  0007_venue_submissions.sql     # venue_submissions table + approve_venue_submission() function for admin approval workflow
 db/venues/
   schema.sql                    # PostGIS schema: categories, venues, venue_tags
   seed.ts                       # Seeds OSM venues for a city
@@ -138,7 +140,8 @@ vercel.json                     # Daily cron for venue score refresh
 | `app/map/page.tsx` | Main dashboard. Fetches activities from last 6 hours, renders Map + ActivityList. Redirects to `/onboarding` if not onboarded. |
 | `app/post/page.tsx` | Activity creation form. Reads venue query params from Spaces to pre-fill location. Onboarding guard. |
 | `app/activity/[id]/page.tsx` | Activity detail + join + participant list. Onboarding guard. |
-| `app/spaces/page.tsx` | Venue discovery map. Onboarding guard. |
+| `app/spaces/page.tsx` | Venue discovery map. Onboarding guard. Floating + button to suggest new spaces. |
+| `app/admin/page.tsx` | Admin page to review pending venue submissions. Approve / Reject actions. No auth gate (prototype). |
 
 ### API Routes
 
@@ -151,6 +154,10 @@ vercel.json                     # Daily cron for venue score refresh
 | `api/venues/[id]/route.ts` | `GET` returns venue detail + nearby activities. |
 | `api/venues/[id]/tags/route.ts` | `POST` upvotes a vibe tag on a venue. |
 | `api/venues/[id]/rate/route.ts` | `POST` submits or updates a 1–5 star rating for a venue. Auto-recalculates avg_rating via DB trigger. |
+| `api/venues/submit/route.ts` | `POST` creates a pending venue submission (name, category, tags, lat/lng). Reverse-geocodes address automatically. |
+| `api/venues/submissions/route.ts` | `GET` returns all pending submissions with submitter info. |
+| `api/venues/submissions/[id]/approve/route.ts` | `POST` calls `approve_venue_submission()` DB function → inserts into venues, marks approved. |
+| `api/venues/submissions/[id]/reject/route.ts` | `POST` marks submission as rejected. |
 | `api/venues/refresh-scores/route.ts` | `POST` recalculates popularity scores for all venues. |
 
 ### Components

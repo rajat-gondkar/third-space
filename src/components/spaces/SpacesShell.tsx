@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 
+import { AddVenueModal } from "@/components/spaces/AddVenueModal";
 import { SpacesFiltersBar } from "@/components/spaces/SpacesFiltersBar";
 import { SpacesList } from "@/components/spaces/SpacesList";
 import { SpacesMap } from "@/components/spaces/SpacesMap";
@@ -29,6 +31,7 @@ export function SpacesShell({ defaultCenter }: Props) {
   const [sort, setSort] = useState<VenueSortMode>("nearest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -53,7 +56,6 @@ export function SpacesShell({ defaultCenter }: Props) {
       setError(null);
 
       try {
-        // Fetch all venues for the map (unbounded)
         const all = await fetchNearbyVenues({
           lat: center.lat,
           lng: center.lng,
@@ -63,7 +65,6 @@ export function SpacesShell({ defaultCenter }: Props) {
 
         if (!cancelled) {
           setAllVenues(all);
-          // Keep selected venue if it still exists in the new set
           setSelectedVenueId((current) =>
             current && all.some((venue) => venue.id === current)
               ? current
@@ -92,7 +93,6 @@ export function SpacesShell({ defaultCenter }: Props) {
     };
   }, [center.lat, center.lng, sort]);
 
-  // Client-side filter the list by category and radius
   const listVenues = useMemo(() => {
     let out = allVenues;
     if (category) {
@@ -126,6 +126,17 @@ export function SpacesShell({ defaultCenter }: Props) {
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
         />
+
+        {/* Floating add button */}
+        <button
+          type="button"
+          onClick={() => setAddModalOpen(true)}
+          className="absolute bottom-4 right-4 z-[40] flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg ring-2 ring-white/40 transition-transform hover:scale-110 active:scale-95 md:bottom-6 md:right-6"
+          aria-label="Suggest a space"
+          title="Suggest a space"
+        >
+          <Plus className="size-6" />
+        </button>
       </div>
 
       <aside className="flex flex-col border-t border-border bg-background p-4 pb-24 md:min-h-0 md:overflow-hidden md:border-l md:border-t-0 md:pb-4">
@@ -160,6 +171,8 @@ export function SpacesShell({ defaultCenter }: Props) {
           onSelectVenue={selectVenue}
         />
       </aside>
+
+      <AddVenueModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />
     </div>
   );
 }

@@ -130,3 +130,86 @@ export async function rateVenue({
 
   return payload;
 }
+
+export type VenueSubmission = {
+  id: number;
+  name: string;
+  categorySlug: string;
+  tags: string[];
+  lat: number;
+  lng: number;
+  address: string | null;
+  submittedBy: string | null;
+  submittedByName: string | null;
+  status: string;
+  createdAt: string;
+};
+
+type SubmitVenueResponse = {
+  id: number;
+  message: string;
+  error?: string;
+};
+
+export async function submitVenue(body: {
+  name: string;
+  category_slug: string;
+  tags?: string[];
+  lat: number;
+  lng: number;
+}): Promise<SubmitVenueResponse> {
+  const response = await fetch("/api/venues/submit", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = (await response.json()) as SubmitVenueResponse;
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not submit space.");
+  }
+
+  return payload;
+}
+
+type SubmissionsResponse = {
+  submissions: VenueSubmission[];
+  error?: string;
+};
+
+export async function fetchPendingSubmissions(): Promise<VenueSubmission[]> {
+  const response = await fetch("/api/venues/submissions");
+  const payload = (await response.json()) as SubmissionsResponse;
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not load submissions.");
+  }
+
+  return payload.submissions;
+}
+
+export async function approveSubmission(id: number): Promise<{ venueId: number; message: string }> {
+  const response = await fetch(`/api/venues/submissions/${id}/approve`, {
+    method: "POST",
+  });
+  const payload = (await response.json()) as { venueId: number; message: string; error?: string };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not approve submission.");
+  }
+
+  return payload;
+}
+
+export async function rejectSubmission(id: number): Promise<{ message: string }> {
+  const response = await fetch(`/api/venues/submissions/${id}/reject`, {
+    method: "POST",
+  });
+  const payload = (await response.json()) as { message: string; error?: string };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not reject submission.");
+  }
+
+  return payload;
+}

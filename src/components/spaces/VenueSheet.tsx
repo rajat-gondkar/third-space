@@ -6,20 +6,11 @@ import { CalendarPlus, ExternalLink, MapPin, Star, X } from "lucide-react";
 
 import { fetchVenueDetail, upvoteVenueTag, rateVenue } from "@/lib/venues/client";
 import type {
-  VenueCategorySlug,
   VenueDetail,
-  VenueTag,
   VenueWithDistance,
 } from "@/lib/venues/types";
 import { StarRating, RatingModal } from "@/components/StarRating";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_TAGS: Record<VenueCategorySlug, string[]> = {
-  cafe: ["quiet", "good wifi", "power outlets", "outdoor seating", "dog friendly"],
-  park: ["dog friendly", "open late", "walking paths", "playground"],
-  sports: ["floodlit", "booking required", "open access"],
-  hobby: ["free entry", "drop-in welcome", "beginner friendly"],
-};
 
 function formatDistance(distanceMetres: number) {
   return distanceMetres < 1000
@@ -34,23 +25,6 @@ function readableTagKey(key: string) {
 function osmUrl(venue: VenueDetail) {
   if (!venue.osmId || !venue.osmType) return null;
   return `https://www.openstreetmap.org/${venue.osmType}/${venue.osmId}`;
-}
-
-function mergeTags(detail: VenueDetail | null, fallback: VenueWithDistance | null) {
-  const base = fallback ? DEFAULT_TAGS[fallback.category.slug] : [];
-  const existing = detail?.tags ?? [];
-  const seen = new Set(existing.map((item) => item.tag));
-  const defaults = base
-    .filter((tag) => !seen.has(tag))
-    .map(
-      (tag, index): VenueTag => ({
-        id: -index - 1,
-        tag,
-        count: 0,
-      }),
-    );
-
-  return [...existing, ...defaults];
 }
 
 export function VenueSheet({
@@ -107,7 +81,7 @@ export function VenueSheet({
     venueId !== null && error?.venueId === venueId ? error.message : null;
   const loading = open && !currentDetail && !currentError;
   const activeVenue = currentDetail ?? venue;
-  const tags = useMemo(() => mergeTags(currentDetail, venue), [currentDetail, venue]);
+  const tags = currentDetail?.tags ?? [];
   const highlightTags = useMemo(() => {
     if (!currentDetail) return [];
 
@@ -264,19 +238,25 @@ export function VenueSheet({
               Vibe tags
             </h4>
             <div className="mt-2 flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <button
-                  key={tag.tag}
-                  type="button"
-                  onClick={() => handleTagClick(tag.tag)}
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-primary/10"
-                >
-                  {tag.tag}
-                  {tag.count > 0 && (
-                    <span className="ml-1 text-muted-foreground">{tag.count}</span>
-                  )}
-                </button>
-              ))}
+              {tags.length > 0 ? (
+                tags.map((tag) => (
+                  <button
+                    key={tag.tag}
+                    type="button"
+                    onClick={() => handleTagClick(tag.tag)}
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-primary/10"
+                  >
+                    {tag.tag}
+                    {tag.count > 0 && (
+                      <span className="ml-1 text-muted-foreground">{tag.count}</span>
+                    )}
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No vibe tags yet — be the first to add one.
+                </p>
+              )}
             </div>
           </section>
 
