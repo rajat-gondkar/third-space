@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 
-type Table = "activities" | "participants";
+type Table = "activities" | "participants" | "thread_posts";
 
 type Props = {
   tables: Table[];

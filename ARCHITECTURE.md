@@ -73,15 +73,15 @@ src/
     BlockingLoader.tsx           # Full-screen spinner during submit
     RealtimeRefresh.tsx          # WebSocket subscription + polling fallback
     spaces/
-    SpacesShell.tsx           # Main spaces page shell (map + list + sheet)
-    SpacesMap.tsx             # Leaflet map wrapper for venues
-    SpacesMapClient.tsx        # Venue map + markers + LocateControl
-    SpaceCard.tsx              # Single venue card in list (shows star rating + count)
-    SpacesList.tsx             # Venue list with sorting
-    SpacesFiltersBar.tsx       # Category + radius filters
-    VenueSheet.tsx             # Bottom sheet with venue details, star rating, rate button, vibe tags, "Start an event here" button
+      SpacesShell.tsx           # Main spaces page shell (map + list + sheet + floating + button)
+      SpacesMap.tsx             # Leaflet map wrapper for venues
+      SpacesMapClient.tsx        # Venue map + markers + LocateControl
+      SpaceCard.tsx              # Single venue card in list (shows star rating + count)
+      SpacesList.tsx             # Venue list with sorting
+      SpacesFiltersBar.tsx       # Category + radius filters
+      VenueSheet.tsx             # Bottom sheet with venue details, star rating, rate button, vibe tags, "Start an event here" button
+      AddVenueModal.tsx          # Modal to suggest a new space (name, category, tags, location picker)
     StarRating.tsx             # Reusable star rating display + interactive selector + RatingModal
-    AddVenueModal.tsx          # Modal to suggest a new space (name, category, tags, location picker)
   hooks/
     usePinnedActivities.ts      # localStorage hook for pinned activities
   lib/
@@ -166,18 +166,28 @@ vercel.json                     # Daily cron for venue score refresh
 |------|---------|
 | `OnboardingFlow.tsx` | Three-step form: college email input → OTP verification → profile (name, age, gender, phone, photo). |
 | `Map.tsx` / `MapClient.tsx` | Leaflet map with activity pins. Dynamic-imported, SSR-disabled. Includes `LocateControl`. |
+| `MapShell.tsx` | Client shell for /map: single-row filter bar (category dropdown + radius cycle + date picker) + center state + ActivityList. |
 | `LocateControl.tsx` | Leaflet control: crosshair button that flies the map to the user's GPS location. |
+| `LocationPicker.tsx` / `LocationPickerClient.tsx` | Tap-to-pin map for posting. Auto-geolocates on mount + tracks center for geocoding bias. |
 | `PostForm.tsx` | Activity creation form. Accepts optional `venue` prop to pre-fill location from Spaces. |
-| `VenueSheet.tsx` | Bottom sheet showing venue details, vibe tags, "Start an event here" button linking to `/post?lat=...&lng=...`. |
+| `VenueSheet.tsx` | Bottom sheet: venue details, star rating, rate button, real vibe tags (no defaults), "Start an event here". |
+| `StarRating.tsx` | Reusable star rating display + interactive 5-star selector + `RatingModal` popup. |
+| `AddVenueModal.tsx` | Suggest a new space: name, category, tags, location picker. Submits to admin review. |
+| `ProfileViewer.tsx` | Participant profile modal. Self = full data + leave button; others = masked phone/email. |
+| `ParticipantsList.tsx` | Accordion of joined users with age/gender badges. Clickable → ProfileViewer. |
+| `BottomNav.tsx` | Mobile bottom nav (Activities / Spaces tabs). Hidden on login/onboarding/landing. |
 
 ### Lib / Utilities
 
 | File | Purpose |
 |------|---------|
 | `lib/college-domains.ts` | `isCollegeEmail(email)` checks against 930 Indian college domains. `getCollegeName(email)` returns the college name. |
-| `lib/onboarding.ts` | `checkOnboarding(supabase, userId, email?)` checks `onboarding_complete` flag. If user signed in with a college email linked to another account, auto-copies profile data. |
+| `lib/auth-identity.ts` | `resolveProfile()` / `resolveProfileId()` — finds canonical profile via `linked_user_id` fallback for bidirectional account linking. |
+| `lib/onboarding.ts` | `checkOnboarding(supabase, userId, email?)` checks `onboarding_complete` flag. Uses `resolveProfile()` for linked accounts. |
 | `lib/email.ts` | `sendOtpEmail(to, otp)` sends a styled OTP email via Resend. Falls back to dev mode (returns `dev: true`) when `RESEND_API_KEY` is empty. |
 | `lib/types.ts` | `Profile` type includes `phone`, `age`, `gender`, `college_email`, `college_email_verified`, `college_name`, `onboarding_complete`. |
+| `lib/geocoding.ts` | OpenStreetMap Nominatim wrapper (forward/reverse, optional lat/lon bias for prioritising nearby results). |
+| `lib/venues/scoring.ts` | Popularity score: weighted blend of OSM quality (25%), activity density (35%), tag engagement (25%), user rating (15%). |
 
 ### Database (Supabase)
 
@@ -186,12 +196,15 @@ vercel.json                     # Daily cron for venue score refresh
 | `0001_init.sql` | `profiles`, `activities`, `participants` tables. RLS policies. Triggers: auto-create profile on signup, auto-add host as participant. `join_activity()` RPC with atomic `for update` lock. Realtime publication. |
 | `0002_participants_display_name_and_email.sql` | Adds `profiles.email`, `participants.display_name`. Updates `handle_new_user` trigger and `join_activity` RPC to accept optional display name. |
 | `0003_onboarding_profiles.sql` | Adds `phone`, `age`, `gender`, `college_email`, `college_email_verified`, `college_name`, `onboarding_complete` to `profiles`. Creates `college_email_verifications` table with RLS. Creates `avatars` storage bucket with public read + authenticated upload policies. |
+| `0005_bidirectional_linking.sql` | `linked_user_id` column + `resolve_canonical_id()` function. Normalised triggers: `normalize_activity_host`, updated `join_activity` RPC, updated RLS policies. Both Gmail and college email point to same profile. |
+| `0006_venue_ratings.sql` | `venue_ratings` table, `avg_rating`/`rating_count` columns on `venues`, auto-recalc trigger, backfill. |
+| `0007_venue_submissions.sql` | `venue_submissions` table + `approve_venue_submission()` function. Admin approval workflow for user-suggested spaces. |
 
 ### Venues Database (PostGIS)
 
 | File | What it sets up |
 |------|-----------------|
-| `db/venues/schema.sql` | `categories`, `venues` (with PostGIS geography column), `venue_tags` tables. Spatial index on venue locations. |
+| `db/venues/schema.sql` | `categories`, `venues` (with PostGIS geography column), `venue_tags` tables. `avg_rating`/`rating_count` on venues. Spatial index on venue locations. |
 | `db/venues/seed.ts` | Fetches venues from OpenStreetMap Overpass API and inserts them. Run with `npm run venues:seed -- --city Bengaluru`. |
 
 ---
@@ -200,13 +213,16 @@ vercel.json                     # Daily cron for venue score refresh
 
 1. **Auth:** Google OAuth → Supabase Auth → session cookie stored by browser.
 2. **Session:** `proxy.ts` runs on every request → `updateSession()` refreshes the cookie → pages get the current user.
-3. **Onboarding check:** After OAuth, `auth/callback` checks `onboarding_complete`. If false → `/onboarding`. If user signed in with a college email already linked to another profile, copies profile data and skips onboarding.
+3. **Onboarding check:** After OAuth, `auth/callback` checks `onboarding_complete`. If false → `/onboarding`. If user signed in with a college email already linked to another profile, links the accounts via `linked_user_id`.
 4. **Protected pages:** Server Components call `checkOnboarding(supabase, userId, email)`. If not onboarded → redirect to `/onboarding`.
 5. **College email verification:** Non-college Google login → user enters college email → OTP sent via Resend → user enters OTP → college email linked to profile.
-6. **Data fetching:** Server Components query Supabase directly. Results passed as props to Client Components.
-7. **Mutations:** Client Components call `supabase.from(...)` or `supabase.rpc("join_activity", ...)`.
-8. **Realtime:** `RealtimeRefresh` subscribes to Postgres changes → debounced `router.refresh()` re-runs Server Components.
-9. **Venue scoring:** Vercel cron hits `/api/venues/refresh-scores` daily → recalculates popularity based on OSM quality + activity density + tag engagement.
+6. **Bidirectional linking:** Logging in with either Gmail or the linked college email resolves to the same canonical profile via `resolve_canonical_id()`.
+7. **Data fetching:** Server Components query Supabase directly. Results passed as props to Client Components.
+8. **Mutations:** Client Components call `supabase.from(...)` or `supabase.rpc("join_activity", ...)`.
+9. **Realtime:** `RealtimeRefresh` subscribes to Postgres changes → debounced `router.refresh()` re-runs Server Components.
+10. **Venue scoring:** Vercel cron hits `/api/venues/refresh-scores` daily → recalculates popularity based on OSM quality + activity density + tag engagement + user ratings.
+11. **Venue ratings:** Users click Rate → `POST /api/venues/[id]/rate` upserts `venue_ratings` → DB trigger recalculates `avg_rating`.
+12. **Venue submissions:** User clicks + on Spaces → fills `AddVenueModal` → `POST /api/venues/submit` → admin reviews at `/admin` → approve inserts into `venues` + copies tags.
 
 ---
 

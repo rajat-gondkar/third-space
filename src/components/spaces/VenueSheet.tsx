@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, ExternalLink, MapPin, Star, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarPlus, ExternalLink, MapPin, MessageSquare, Star, X } from "lucide-react";
 
 import { fetchVenueDetail, upvoteVenueTag, rateVenue } from "@/lib/venues/client";
 import type {
@@ -10,7 +11,9 @@ import type {
   VenueWithDistance,
 } from "@/lib/venues/types";
 import { StarRating, RatingModal } from "@/components/StarRating";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { Thread } from "@/lib/types";
 
 function formatDistance(distanceMetres: number) {
   return distanceMetres < 1000
@@ -45,6 +48,8 @@ export function VenueSheet({
   } | null>(null);
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [ratingOpen, setRatingOpen] = useState(false);
+  const [thread, setThread] = useState<Thread | null>(null);
+  const [threadLoading, setThreadLoading] = useState(false);
 
   useEffect(() => {
     if (!open || !venue) return;
@@ -74,6 +79,47 @@ export function VenueSheet({
       cancelled = true;
     };
   }, [center.lat, center.lng, open, venue]);
+
+  // Fetch the thread for this venue (if any)
+  useEffect(() => {
+    if (!venue) {
+      setThread(null);
+      return;
+    }
+
+    let cancelled = false;
+    setThreadLoading(true);
+
+    async function loadThread() {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("threads")
+        .select("*, thread_posts(count)")
+        .eq("venue_id", venue!.id)
+        .single();
+
+      if (cancelled) return;
+
+      if (error || !data) {
+        setThread(null);
+      } else {
+        const postCount = Array.isArray(
+          (data as Record<string, unknown>)["thread_posts"],
+        )
+          ? ((data as Record<string, unknown>)["thread_posts"] as { count: number }[])[0]
+              ?.count ?? 0
+          : 0;
+        setThread({ ...data, post_count: postCount } as Thread);
+      }
+      setThreadLoading(false);
+    }
+
+    loadThread();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [venue?.id]);
 
   const venueId = venue?.id ?? null;
   const currentDetail = venueId !== null && detail?.id === venueId ? detail : null;
@@ -288,14 +334,23 @@ export function VenueSheet({
               )}
             </div>
 
-            <Link
-              href={`/post?lat=${activeVenue.lat}&lng=${activeVenue.lng}&name=${encodeURIComponent(activeVenue.name)}&address=${encodeURIComponent(activeVenue.address ?? "")}`}
-              onClick={onClose}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md ring-1 ring-white/20 transition-transform hover:scale-[1.02] hover:opacity-95"
-            >
-              <CalendarPlus className="size-4" />
-              Start an event here
-            </Link>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Link
+                href={`/post?lat=${activeVenue.lat}&lng=${activeVenue.lng}&name=${encodeURIComponent(activeVenue.name)}&address=${encodeURIComponent(activeVenue.address ?? "")}`}
+                onClick={onClose}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md ring-1 ring-white/20 transition-transform hover:scale-[1.02] hover:opacity-95"
+              >
+                <CalendarPlus className="size-4" />
+                Start an event here
+              </Link>
+
+              <ThreadButton
+                venue={activeVenue}
+                thread={thread}
+                threadLoading={threadLoading}
+                onClose={onClose}
+              />
+            </div>
           </section>
 
           {highlightTags.length > 0 && (
@@ -359,6 +414,70 @@ function recalcPopularity(
       (osmQuality * 0.25 + activityDensity * 0.35 + tagEngagement * 0.25 + rating * 0.15) *
       10
     ).toFixed(2),
+  );
+}
+
+function ThreadButton({
+  venue,
+  thread,
+  threadLoading,
+  onClose,
+}: {
+  venue: VenueWithDistance;
+  thread: Thread | null;
+  threadLoading: boolean;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [navigating, setNavigating] = useState(false);
+
+  const hasPosts = (thread?.post_count ?? 0) > 0;
+  const label = hasPosts ? "Direct to threads" : "Start a conversation";
+
+  async function handleClick() {
+    if (navigating) return;
+    setNavigating(true);
+    onClose();
+
+    if (thread) {
+      router.push(`/threads/${thread.id}`);
+      return;
+    }
+
+    // Thread doesn't exist yet — create it first
+    try {
+      const res = await fetch("/api/threads", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          venue_id: venue.id,
+          name: venue.name,
+          location_name: venue.address,
+          lat: venue.lat,
+          lng: venue.lng,
+          category_slug: venue.category.slug,
+          category_emoji: venue.category.emoji,
+        }),
+      });
+      const payload = (await res.json()) as { thread?: Thread; error?: string };
+      if (!res.ok) throw new Error(payload.error ?? "Could not create thread.");
+      router.push(`/threads/${payload.thread!.id}`);
+    } catch {
+      // Fallback: go to threads list where it will be auto-created
+      router.push("/threads");
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={threadLoading || navigating}
+      onClick={handleClick}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-semibold shadow-sm transition-all hover:border-primary/40 hover:bg-accent/50 disabled:opacity-50"
+    >
+      <MessageSquare className="size-4" />
+      {navigating ? "Opening…" : label}
+    </button>
   );
 }
 

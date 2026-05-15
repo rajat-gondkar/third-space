@@ -70,3 +70,26 @@ export type ActivityWithCount = Activity & {
 };
 
 export type JoinResult = "ok" | "full" | "not_found" | "already_joined";
+
+export type Thread = {
+  id: string;
+  venue_id: number;
+  name: string;
+  location_name: string | null;
+  lat: number | null;
+  lng: number | null;
+  category_slug: string | null;
+  category_emoji: string | null;
+  created_at: string;
+  post_count?: number;
+};
+
+export type ThreadPost = {
+  id: string;
+  thread_id: string;
+  user_id: string;
+  content: string;
+  image_urls: string[];
+  created_at: string;
+  profile?: Pick<Profile, "id" | "display_name" | "avatar_url"> | null;
+};

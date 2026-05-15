@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Map, Route } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { Map, MessageSquare, Route } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/map", label: "Activities", icon: Route },
   { href: "/spaces", label: "Spaces", icon: Map },
+  { href: "/threads", label: "Threads", icon: MessageSquare },
 ];
 
 const HIDDEN_PATHS = ["/", "/login", "/onboarding"];
@@ -22,7 +23,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-sm grid-cols-2 gap-2">
+      <div className="mx-auto grid max-w-sm grid-cols-3 gap-2">
         {tabs.map((tab) => {
           const active =
             pathname === tab.href || pathname.startsWith(`${tab.href}/`);
