@@ -57,18 +57,20 @@ export function ThreadsShell() {
 
         // Compute rough distance for display (threads don't have distance from API directly,
         // but we can estimate from lat/lng if available)
-        const threadsWithDist = (payload.threads ?? []).map((t) => {
-          let distanceMetres: number | undefined;
-          if (t.lat != null && t.lng != null) {
-            distanceMetres = haversine(
-              userLocation!.lat,
-              userLocation!.lng,
-              t.lat,
-              t.lng,
-            );
-          }
-          return { ...t, distanceMetres };
-        });
+        const threadsWithDist = (payload.threads ?? [])
+          .filter((t) => (t.post_count ?? 0) > 0)
+          .map((t) => {
+            let distanceMetres: number | undefined;
+            if (t.lat != null && t.lng != null) {
+              distanceMetres = haversine(
+                userLocation!.lat,
+                userLocation!.lng,
+                t.lat,
+                t.lng,
+              );
+            }
+            return { ...t, distanceMetres };
+          });
 
         if (!cancelled) setThreads(threadsWithDist);
       } catch (err) {
@@ -126,9 +128,9 @@ export function ThreadsShell() {
         {!loading && threads.length === 0 && (
           <div className="animate-fade-up rounded-2xl border border-dashed border-border bg-gradient-to-br from-primary/5 via-transparent to-fuchsia-500/5 p-6 text-center">
             <MessageSquare className="mx-auto size-8 text-primary/60" />
-            <p className="mt-2 font-medium">No threads nearby</p>
+            <p className="mt-2 font-medium">No conversations yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              No spaces found in your area yet. Explore the map to discover more.
+              Start a conversation from a space on the map.
             </p>
           </div>
         )}
