@@ -8,17 +8,37 @@ export type Filters = {
   mode: "all" | "today" | "date";
   date: string; // YYYY-MM-DD
   location: string;
+  category: "all" | "sports" | "study" | "hobby" | "food and coffee" | "other"; // Add this
+  radius: number; // Add this
 };
 
 export const EMPTY_FILTERS: Filters = {
   mode: "all",
   date: "",
   location: "",
+  category: "all",
+  radius: 1000, // Set a default (e.g., 1km)
 };
 
 export function isFilterActive(f: Filters) {
-  return f.mode !== "all" || f.location.trim().length > 0;
+  return f.mode !== "all" || f.location.trim().length > 0 || f.category !== "all" || f.radius !== 1000;
 }
+
+const CATEGORIES: Array<{ value: Filters["category"]; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "sports", label: "Sports" },
+  { value: "study", label: "Study" },
+  { value: "hobby", label: "Hobby" },
+  { value: "food and coffee", label: "Food and Coffee" },
+  { value: "other", label: "Other" },
+];
+
+const RADIUS_OPTIONS = [
+  { value: 500, label: "500 m" },
+  { value: 1000, label: "1 km" },
+  { value: 2000, label: "2 km" },
+  { value: 5000, label: "5 km" },
+];
 
 export function FiltersBar({
   filters,
@@ -30,7 +50,47 @@ export function FiltersBar({
   const active = isFilterActive(filters);
 
   return (
+    
     <div className="flex flex-wrap items-center gap-2">
+
+      {/* Category Filter Pills */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {CATEGORIES.map((cat) => {
+          const active = filters.category === cat.value;
+          return (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => onChange({ ...filters, category: cat.value })}
+              className={cn(
+                "h-8 rounded-full border px-3 text-xs font-medium transition-colors",
+                active
+                  ? "border-transparent bg-primary text-primary-foreground"
+                  : "border-border bg-card hover:border-primary/40 hover:bg-accent/60"
+              )}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </div>
+
+        {RADIUS_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange({ ...filters, radius: opt.value })}
+          className={cn(
+            "h-7 px-3 rounded-full text-[11px] font-semibold transition-colors",
+            filters.radius === opt.value
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+
       <button
         type="button"
         onClick={() =>

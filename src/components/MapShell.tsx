@@ -75,9 +75,9 @@ type Props = {
 
 export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
   const [center, setCenter] = useState<Coords>(defaultCenter);
-  const [radius, setRadius] = useState(500);
+  const [radius, setRadius] = useState(5000);
   const [category, setCategory] = useState<ActivityCategory | null>(null);
-  const [dateMode, setDateMode] = useState<"today" | "date">("today");
+  const [dateMode, setDateMode] = useState<"all" | "today" | "date">("all");
   const [customDate, setCustomDate] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
@@ -119,6 +119,7 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
       (a) => haversineMeters(center, { lat: a.lat, lng: a.lng }) <= radius,
     );
     out = out.filter((a) => {
+      if (dateMode === "all") return true;
       const t = new Date(a.start_time).getTime();
       if (dateMode === "today") {
         return withinDay(t, new Date());
@@ -131,7 +132,7 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
     return out;
   }, [activities, category, center, radius, dateMode, customDate]);
 
-  const filterActive = category !== null || dateMode === "date";
+  const filterActive = category !== null || dateMode === "date" || dateMode === "today";
 
   // Radius cycling
   function cycleRadius() {
@@ -147,8 +148,10 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
     : "✨ All";
 
   // Date button label
-  let dateLabel = "Today";
-  if (dateMode === "date" && customDate) {
+  let dateLabel = "Any Date";
+  if (dateMode === "today") {
+    dateLabel = "Today";
+  } else if (dateMode === "date" && customDate) {
     dateLabel = formatDateShort(new Date(`${customDate}T00:00:00`));
   }
 
@@ -157,7 +160,7 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
   return (
     <div className="flex flex-1 flex-col md:grid md:grid-cols-[1fr_440px] md:overflow-hidden">
       <div className="relative h-[55vh] w-full shrink-0 md:h-full md:overflow-hidden">
-        <Map center={center} activities={activities} radius={radius} />
+        <Map center={center} activities={filteredActivities} radius={radius} />
       </div>
 
       <aside className="flex flex-col border-t border-border bg-background p-4 pb-24 md:min-h-0 md:overflow-hidden md:border-l md:border-t-0 md:pb-4">
@@ -272,7 +275,7 @@ export function MapShell({ activities, defaultCenter, errorMessage }: Props) {
               onChange={(e) => {
                 const val = e.target.value;
                 if (!val) {
-                  setDateMode("today");
+                  setDateMode("all");
                   setCustomDate("");
                   return;
                 }

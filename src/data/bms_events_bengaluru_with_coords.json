@@ -1,0 +1,162 @@
+[
+    {
+        "event_name": "B Ajaneesh Loknath Live in Concert - Bengaluru",
+        "location": "Bhartiya Mall Of Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.946571590927388,
+        "lng": 77.55081373632069,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Sunburn Festival 2026",
+        "location": "Mahalaxmi Race Course: Mumbai",
+        "event_type": "Concerts",
+        "lat": 13.00965105519567,
+        "lng": 77.62021169117253,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Bangalore Open Air - Rock & Heavy Metal Festival",
+        "location": "Venue To Be Announced: Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.946129465894632,
+        "lng": 77.58742854241575,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Kal ki Chinta Nahi Karta ft. Ravi Gupta",
+        "location": "MLR Convention Centre: Whitefield, Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.93447215517649,
+        "lng": 77.57468395070954,
+        "category": "hobby"
+    },
+    {
+        "event_name": "ImagiNesan - A Live Standup Show By Nesan David",
+        "location": "Good Shepherd Auditorium: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.984541359100394,
+        "lng": 77.60065206984754,
+        "category": "hobby"
+    },
+    {
+        "event_name": "BLUNT ft. Onkar ",
+        "location": "The Comedy Theatre, Indiranagar: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 13.001533098021902,
+        "lng": 77.5926230928773,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Ab Hai Aapki Bari by Inder Sahani",
+        "location": "Fan Park,Phoenix Mall Of Asia: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.938178688195416,
+        "lng": 77.59773437805107,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Urooj Ashfaq's It's Funny To Me",
+        "location": "Bangalore International Centre: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 13.006836008949385,
+        "lng": 77.5866582124119,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Crazy Brahma - Where Music Meets Magic!",
+        "location": "J K Grand Arena, Kengeri Town: Bengaluru",
+        "event_type": "Music Festivals",
+        "lat": 12.988233813779946,
+        "lng": 77.5625379091867,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Monkey House-Kidex Expo @ Jayamahal Palace",
+        "location": "Jayamahal Palace Hotel: Bengaluru",
+        "event_type": "Education",
+        "lat": 12.955227757297727,
+        "lng": 77.61322087116567,
+        "category": "study"
+    },
+    {
+        "event_name": "Cry Daddy by Anirban Dasgupta",
+        "location": "Alliance Francaise: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.937016288032988,
+        "lng": 77.61130957236989,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Tarangini July 2026",
+        "location": "Chowdiah Memorial Hall: Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.970095863978182,
+        "lng": 77.62519059364945,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Standing Up By Kunal Kamra",
+        "location": "The Underground Comedy Club: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.922214857495614,
+        "lng": 77.62044811020453,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Silaa Saturday Hindi Jamming",
+        "location": "Silaa The Garden Cafe, HSR Layout: Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.997597601264882,
+        "lng": 77.57051163165171,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Gaurav Kapoor LIVE",
+        "location": "The Comedy Theatre, Indiranagar: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.963873580051267,
+        "lng": 77.5725619549933,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Saturday Night Live ft. Sukoon Wali Qawwali",
+        "location": "ICB Indian Craft Brewery: Bengaluru",
+        "event_type": "Club Gigs",
+        "lat": 12.991940142467838,
+        "lng": 77.6176778481913,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Penn Masala India Tour - Bengaluru",
+        "location": "Good Shepherd Auditorium: Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.966940670554491,
+        "lng": 77.60804850556681,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Silaa Friday Hindi Jamming",
+        "location": "Silaa The Garden Cafe, HSR Layout: Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.986166227115733,
+        "lng": 77.59839860453936,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Sitar and Sarod Jugalbandi with Mohan Brothers",
+        "location": "Prestige Centre for Performing Arts: Bengaluru",
+        "event_type": "Concerts",
+        "lat": 12.955243907167203,
+        "lng": 77.61750618972756,
+        "category": "hobby"
+    },
+    {
+        "event_name": "Late Night Sexy Jokes - Best Of Bangalore.",
+        "location": "The Underground Comedy Club: Bengaluru",
+        "event_type": "Stand up Comedy",
+        "lat": 12.963190020990275,
+        "lng": 77.5650498003285,
+        "category": "hobby"
+    }
+]
